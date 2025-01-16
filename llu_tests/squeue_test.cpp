@@ -50,8 +50,8 @@ TEST(LLU_SQUEUE_TEST, LLU_SQUEUE_DATA_TEST) {
 
   q.push_back(0);
   q.push_back(1);
-  q.push_back(2);
-  q.push_back(3);
+  q.emplace_back(2);
+  q.emplace_back(3);
   q.push_back(4);
   ASSERT_EQ(q.front(), 2) << "Front should be 2";
   ASSERT_EQ(q.back(), 4) << "Back should be 4";

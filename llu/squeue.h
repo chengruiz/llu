@@ -53,7 +53,7 @@ private:
   std::size_t capacity_ = 0;
 };
 
-template <typename T> void StaticQueue<T>::allocate(std::size_t size) {
+template<typename T> void StaticQueue<T>::allocate(std::size_t size) {
   if (data_.empty()) {
     data_.resize(size);
     capacity_ = size;
@@ -71,7 +71,7 @@ template <typename T> void StaticQueue<T>::allocate(std::size_t size) {
   }
 }
 
-template <typename T> template <typename ...Args> void StaticQueue<T>::emplace_back(Args &&...args) {
+template<typename T> template<typename ...Args> void StaticQueue<T>::emplace_back(Args &&...args) {
   if (is_full()) {
     front_ = (front_ + 1) % capacity_;
   } else {
@@ -80,20 +80,20 @@ template <typename T> template <typename ...Args> void StaticQueue<T>::emplace_b
   data_[(front_ + size_ - 1) % capacity_] = T(std::forward<Args>(args)...);
 }
 
-template <typename T> const T &StaticQueue<T>::get(int64_t idx, const T &default_value) const {
+template<typename T> const T &StaticQueue<T>::get(int64_t idx, const T &default_value) const {
   if (idx < 0) idx += size_;
   if (idx < 0 or idx >= size_) return default_value;
   return data_[(front_ + idx) % capacity_];
 }
 
-template <typename T> const T &StaticQueue<T>::get_padded(int64_t idx) const {
+template<typename T> const T &StaticQueue<T>::get_padded(int64_t idx) const {
   if (idx < 0) idx = static_cast<int64_t>(size_) + idx;
   if (idx < 0) return front();
   if (idx >= size_) return back();
   return data_[(front_ + idx) % capacity_];
 }
 
-template <typename T> int64_t StaticQueue<T>::get_index(int64_t idx) const {
+template<typename T> int64_t StaticQueue<T>::get_index(int64_t idx) const {
   if (idx < 0) idx += size_;
   if (idx < 0 or idx >= size_) throw IndexOutOfRange();
   return (front_ + idx) % capacity_;
