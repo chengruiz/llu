@@ -1,0 +1,28 @@
+cmake_minimum_required(VERSION 3.16)
+project(llu)
+
+set(CMAKE_CXX_STANDARD 17)
+
+find_package(Eigen3 CONFIG REQUIRED)
+
+add_library(llu INTERFACE)
+target_include_directories(llu INTERFACE ${CMAKE_CURRENT_LIST_DIR})
+target_link_libraries(llu INTERFACE Eigen3::Eigen)
+
+option(LLU_BUILD_TESTS "Build tests" ON)
+
+if (LLU_BUILD_TESTS)
+    find_package(GTest CONFIG REQUIRED)
+    function(llu_add_test name)
+        add_executable(llu_${name} llu_tests/${name}.cpp)
+        target_link_libraries(llu_${name} llu GTest::gtest GTest::gtest_main)
+    endfunction()
+
+    llu_add_test(const_test)
+    llu_add_test(geometry_test)
+    llu_add_test(macro_test)
+    llu_add_test(math_test)
+    llu_add_test(range_test)
+    llu_add_test(squeue_test)
+    llu_add_test(typename_test)
+endif ()
