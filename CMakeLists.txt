@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
 project(llu)
 
-set(CMAKE_CXX_STANDARD 17)
+if (NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 17)
+endif ()
 
 find_package(Eigen3 CONFIG REQUIRED)
 find_package(yaml-cpp CONFIG REQUIRED)

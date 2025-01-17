@@ -10,4 +10,11 @@
 
 #define LLU_FILELINE() "[" __FILE_NAME__ ":" LLU_TO_STR(__LINE__) "]"
 
+#if __cplusplus >= 201703L
+#include <type_traits>
+#define LLU_ASSERT_IS_FLOATING_POINT(T) static_assert(std::is_floating_point_v<T>)
+#else
+#define LLU_ASSERT_IS_FLOATING_POINT(T)
+#endif
+
 #endif  // LLU_MACRO_H_

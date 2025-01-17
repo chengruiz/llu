@@ -1,10 +1,10 @@
 #ifndef LLU_GEOMETRY_H_
 #define LLU_GEOMETRY_H_
 
-#include <type_traits>
 #include <Eigen/Dense>
 
 #include <llu/eigen.h>
+#include <llu/macro.h>
 
 namespace llu {
 template<typename T>
@@ -15,7 +15,7 @@ class Quaternion {
   static constexpr T PI = static_cast<T>(M_PI);
 
 public:
-  static_assert(std::is_floating_point_v<T>);
+  LLU_ASSERT_IS_FLOATING_POINT(T);
   Quaternion(): data{1., 0., 0., 0.} {}
   Quaternion(const Quaternion &q) : data(q.data) {}
   Quaternion(T w, T x, T y, T z) : data{w, x, y, z} { normalize(); }

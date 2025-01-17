@@ -6,6 +6,10 @@
 #include <fmt/ranges.h>
 #include <yaml-cpp/yaml.h>
 
+#if __cplusplus >= 201703L
+#include <optional>
+#endif
+
 #include <llu/error.h>
 #include <llu/range.h>
 #include <llu/typename.h>
@@ -89,8 +93,6 @@ void setTo(const Node &node, Value &value) {
 }
 
 template<typename T>
-void setTo(const Node &node, std::optional<T> &value);
-template<typename T>
 void setTo(const Node &node, std::vector<T> &value);
 template<typename T, std::size_t N>
 void setTo(const Node &node, std::array<T, N> &value);
@@ -98,19 +100,12 @@ template<typename dtype>
 void setTo(const Node &node, range_t<dtype> &value);
 template<typename T, int N>
 void setTo(const Node &node, Eigen::Matrix<T, N, 1> &value);
+template<typename T>
+void setTo(const Node &node, Eigen::Matrix<T, -1, 1> &value);
 template<typename T, int N>
 void setTo(const Node &node, Eigen::Array<T, N, 1> &value);
-
 template<typename T>
-void setTo(const Node &node, std::optional<T> &value) {
-  if (node.IsNull()) {
-    value.reset();
-    return;
-  }
-  T inner_value;
-  setTo(node, inner_value);
-  value = inner_value;
-}
+void setTo(const Node &node, Eigen::Array<T, -1, 1> &value);
 
 template<typename T>
 void setTo(const Node &node, std::vector<T> &value) {
@@ -158,29 +153,44 @@ void setTo(const Node &node, range_t<dtype> &value) {
 
 template<typename T, int N>
 void setTo(const Node &node, Eigen::Matrix<T, N, 1> &value) {
-  if constexpr (N == -1) {
-    std::vector<T> result;
-    setTo(node, result);
-    value = Eigen::Map<Eigen::Matrix<T, -1, 1>>(result.data(), result.size());
-  } else {
-    std::array<T, N> result;
-    setTo(node, result);
-    value = Eigen::Map<Eigen::Matrix<T, N, 1>>(result.data());
-  }
+  std::array<T, N> result;
+  setTo(node, result);
+  value = Eigen::Map<Eigen::Matrix<T, N, 1>>(result.data());
+}
+
+template<typename T>
+void setTo(const Node &node, Eigen::Matrix<T, -1, 1> &value) {
+  std::vector<T> result;
+  setTo(node, result);
+  value = Eigen::Map<Eigen::Matrix<T, -1, 1>>(result.data(), result.size());
 }
 
 template<typename T, int N>
 void setTo(const Node &node, Eigen::Array<T, N, 1> &value) {
-  if constexpr (N == -1) {
-    std::vector<T> result;
-    setTo(node, result);
-    value = Eigen::Map<Eigen::Matrix<T, -1, 1>>(result.data(), result.size());
-  } else {
-    std::array<T, N> result;
-    setTo(node, result);
-    value = Eigen::Map<Eigen::Matrix<T, N, 1>>(result.data());
-  }
+  std::array<T, N> result;
+  setTo(node, result);
+  value = Eigen::Map<Eigen::Matrix<T, N, 1>>(result.data());
 }
+
+template<typename T>
+void setTo(const Node &node, Eigen::Array<T, -1, 1> &value) {
+  std::vector<T> result;
+  setTo(node, result);
+  value = Eigen::Map<Eigen::Matrix<T, -1, 1>>(result.data(), result.size());
+}
+
+#if __cplusplus >= 201703L
+template<typename T>
+void setTo(const Node &node, std::optional<T> &value) {
+  if (node.IsNull()) {
+    value.reset();
+    return;
+  }
+  T inner_value;
+  setTo(node, inner_value);
+  value = inner_value;
+}
+#endif
 } // namespace impl
 
 template<typename Value>

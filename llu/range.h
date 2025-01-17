@@ -19,11 +19,18 @@ public:
   [[nodiscard]] T mid() const { return (lower() + upper()) / 2; }
 };
 
+#if __cplusplus >= 201703L
 using std::clamp;
+#else
+template<typename T>
+T clamp(T val, T lower, T upper) {
+  return std::max(lower, std::min(val, upper));
+}
+#endif
 
 template<typename T>
-T clamp(T val, range_t<T> range) {
-  return std::clamp(val, range.lower(), range.upper());
+T clamp(T val, const range_t<T> &range) {
+  return clamp(val, range.lower(), range.upper());
 }
 
 template<typename T>

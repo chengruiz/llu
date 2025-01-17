@@ -146,12 +146,14 @@ TEST(LLU_YAML_TEST, LLU_READ_TEST2) {
 
 TEST(LLU_YAML_TEST, LLU_READ_TEST3) {
   YAML::Node node = YAML::Load("{a: 1, b: null, c: [2.5, 3.5]}");
+#if __cplusplus >= 201703L
   std::optional<int> a;
   llu::yml::setTo(node, "a", a);
   ASSERT_TRUE(a.has_value()) << "Expected a.has_value()";
   ASSERT_EQ(a.value(), 1) << "Expected a = 1";
   llu::yml::setTo(node, "b", a);
   ASSERT_FALSE(a.has_value()) << "Expected not a.has_value()";
+#endif
 
   llu::range_t<double> c;
   llu::yml::setTo(node, "c", c);

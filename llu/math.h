@@ -5,6 +5,7 @@
 #include <Eigen/Core>
 
 #include <llu/const.h>
+#include <llu/macro.h>
 
 namespace llu {
 #ifndef M_PIf
@@ -20,12 +21,12 @@ template<typename T> constexpr T median(T a, T b, T c) {
 }
 
 template<typename T> constexpr T deg2rad(T deg) {
-  static_assert(std::is_floating_point_v<T>);
+  LLU_ASSERT_IS_FLOATING_POINT(T);
   return deg * static_cast<T>(M_PI / 180.);
 }
 
 template<typename T> constexpr T rad2deg(T rad) {
-  static_assert(std::is_floating_point_v<T>);
+  LLU_ASSERT_IS_FLOATING_POINT(T);
   return rad * static_cast<T>(180. / M_PI);
 }
 
@@ -37,7 +38,7 @@ template<typename Derived> auto unit(const Eigen::MatrixBase<Derived> &x) {
 }
 
 template<typename T> constexpr T interpolate(T x0, T x1, T k) {
-  static_assert(std::is_floating_point_v<T>);
+  LLU_ASSERT_IS_FLOATING_POINT(T);
   return x0 + (x1 - x0) * k;
 }
 
@@ -52,7 +53,7 @@ template<typename T> constexpr T pMod(T dividend, T divisor) { // positive mod, 
 }
 
 template<typename T> constexpr T angleDiff(T a1, T a2) {
-  static_assert(std::is_floating_point_v<T>);
+  LLU_ASSERT_IS_FLOATING_POINT(T);
   constexpr T pi = static_cast<T>(M_PI);
   a1 -= static_cast<int>(a1 / (2 * pi)) * 2 * pi;
   a2 -= static_cast<int>(a2 / (2 * pi)) * 2 * pi;
