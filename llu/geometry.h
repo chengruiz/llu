@@ -16,35 +16,36 @@ class Quaternion {
 
 public:
   LLU_ASSERT_IS_FLOATING_POINT(T);
-  Quaternion(): data{1., 0., 0., 0.} {}
-  Quaternion(const Quaternion &q) : data(q.data) {}
-  Quaternion(T w, T x, T y, T z) : data{w, x, y, z} { normalize(); }
-  explicit Quaternion(cVec4T q) : data(q[0], q[1], q[2], q[3]) {}
-  explicit Quaternion(const Eigen::Quaternion<T> &q) : data{q.w(), q.x(), q.y(), q.z()} {}
+  Quaternion(): data_{1., 0., 0., 0.} {}
+  Quaternion(const Quaternion &q) : data_(q.data_) {}
+  Quaternion(T w, T x, T y, T z) : data_{w, x, y, z} { normalize(); }
+  explicit Quaternion(const std::array<T, 4> &data) : data_(data) { normalize(); }
+  explicit Quaternion(cVec4T q) : data_{q[0], q[1], q[2], q[3]} {}
+  explicit Quaternion(const Eigen::Quaternion<T> &q) : data_{q.w(), q.x(), q.y(), q.z()} {}
   static Quaternion fromMatrix(cMat3T mat);
   static Quaternion fromRoll(T roll) { return {std::cos(roll / 2), std::sin(roll / 2), 0., 0.}; }
   static Quaternion fromPitch(T pitch) { return {std::cos(pitch / 2), 0., std::sin(pitch / 2), 0.}; }
   static Quaternion fromYaw(T yaw) { return {std::cos(yaw / 2), 0., 0., std::sin(yaw / 2)}; }
   static Quaternion fromEulerAngles(const Vec3T &rpy) { return fromEulerAngles(rpy.x(), rpy.y(), rpy.z()); }
+  static Quaternion fromEulerAngles(const std::array<T, 3> &rpy) { return fromEulerAngles(rpy[0], rpy[1], rpy[2]); }
   static Quaternion fromEulerAngles(T roll, T pitch, T yaw) { return fromYaw(yaw) * fromPitch(pitch) * fromRoll(roll); }
 
-  void setIdentity() { data = {1., 0., 0., 0.}; }
-  [[nodiscard]] T w() const { return data[0]; }
-  [[nodiscard]] T x() const { return data[1]; }
-  [[nodiscard]] T y() const { return data[2]; }
-  [[nodiscard]] T z() const { return data[3]; }
-  [[nodiscard]] Vec4T eigen() const { return {w(), x(), y(), z()}; }
+  void setIdentity() { data_ = {1., 0., 0., 0.}; }
+  [[nodiscard]] T w() const { return data_[0]; }
+  [[nodiscard]] T x() const { return data_[1]; }
+  [[nodiscard]] T y() const { return data_[2]; }
+  [[nodiscard]] T z() const { return data_[3]; }
+  [[nodiscard]] Vec4T coeffs() const { return {w(), x(), y(), z()}; }
   [[nodiscard]] Quaternion inverse() const { return {w(), -x(), -y(), -z()}; }
   [[nodiscard]] Mat3T matrix() const;
   [[nodiscard]] Vec3T eulerAngles() const;
 
-  Quaternion &operator=(cVec4T q);
   [[nodiscard]] Quaternion operator*(const Quaternion &other) const;
   [[nodiscard]] Vec3T operator*(const Vec3T &vec) const;
   [[nodiscard]] bool isApprox(const Quaternion &other, T prec) const;
 
 private:
-  std::array<T, 4> data;
+  std::array<T, 4> data_;
 
   [[nodiscard]] T norm() const { return std::sqrt(squaredNorm()); }
   [[nodiscard]] T squaredNorm() const { return w() * w() + x() * x() + y() * y() + z() * z(); }
@@ -77,10 +78,10 @@ auto Quaternion<T>::fromMatrix(cMat3T mat) -> Quaternion {
 
 template<typename T>
 auto Quaternion<T>::operator*=(T coef) -> Quaternion & {
-  data[0] *= coef;
-  data[1] *= coef;
-  data[2] *= coef;
-  data[3] *= coef;
+  data_[0] *= coef;
+  data_[1] *= coef;
+  data_[2] *= coef;
+  data_[3] *= coef;
   return *this;
 }
 
@@ -95,9 +96,9 @@ auto Quaternion<T>::operator*(const Quaternion &other) const -> Quaternion {
 }
 
 template<typename T> bool Quaternion<T>::isApprox(const Quaternion &other, T prec) const {
-  Vec4T eigen1 = eigen();
-  Vec4T eigen2 = other.eigen();
-  return eigen1.isApprox(eigen2, prec) or eigen1.isApprox(-eigen2, prec);
+  Vec4T coeffs1 = coeffs();
+  Vec4T coeffs2 = other.coeffs();
+  return coeffs1.isApprox(coeffs2, prec) or coeffs1.isApprox(-coeffs2, prec);
 }
 
 template<typename T>
@@ -137,12 +138,6 @@ template<typename T>
 auto Quaternion<T>::operator*(const Vec3T &vec) const -> Vec3T {
   Vec3T u{x(), y(), z()};
   return 2 * u.dot(vec) * u + (w() * w() - u.dot(u)) * vec + 2 * w() * u.cross(vec);
-}
-
-template<typename T>
-auto Quaternion<T>::operator=(cVec4T q) -> Quaternion & {
-  std::copy(q.data(), q.data() + 4, data.begin());
-  return *this;
 }
 
 template<typename T>

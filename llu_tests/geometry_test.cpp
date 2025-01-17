@@ -45,4 +45,16 @@ TEST(LLU_GEOMETRY_TEST, LLU_QUATERNION_TEST) {
   ASSERT_FALSE(q11.isApprox(q01, llu::kEPS)) << "Quaternions should not be equal";
   ASSERT_FALSE(q21.isApprox(q01, llu::kEPS)) << "Quaternions should not be equal";
   ASSERT_FALSE(q21.isApprox(q11, llu::kEPS)) << "Quaternions should not be equal";
+
+  llu::Quatd q02{q00};
+  llu::Vec4d q00_coeffs = q00.coeffs();
+  ASSERT_NEAR(q02.w(), q00.w(), llu::kEPS) << "Quaternions should be equal";
+  ASSERT_NEAR(q02.x(), q00.x(), llu::kEPS) << "Quaternions should be equal";
+  ASSERT_NEAR(q02.y(), q00.y(), llu::kEPS) << "Quaternions should be equal";
+  ASSERT_NEAR(q02.z(), q00.z(), llu::kEPS) << "Quaternions should be equal";
+  llu::Quatd q03{q00_coeffs};
+  ASSERT_NEAR(q03.w(), q00_coeffs[0], llu::kEPS) << "Quaternions should be equal";
+  ASSERT_NEAR(q03.x(), q00_coeffs[1], llu::kEPS) << "Quaternions should be equal";
+  ASSERT_NEAR(q03.y(), q00_coeffs[2], llu::kEPS) << "Quaternions should be equal";
+  ASSERT_NEAR(q03.z(), q00_coeffs[3], llu::kEPS) << "Quaternions should be equal";
 }
