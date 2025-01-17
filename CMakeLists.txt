@@ -4,10 +4,12 @@ project(llu)
 set(CMAKE_CXX_STANDARD 17)
 
 find_package(Eigen3 CONFIG REQUIRED)
+find_package(yaml-cpp CONFIG REQUIRED)
+find_package(fmt CONFIG REQUIRED)
 
 add_library(llu INTERFACE)
 target_include_directories(llu INTERFACE ${CMAKE_CURRENT_LIST_DIR})
-target_link_libraries(llu INTERFACE Eigen3::Eigen)
+target_link_libraries(llu INTERFACE Eigen3::Eigen yaml-cpp fmt::fmt)
 
 option(LLU_BUILD_TESTS "Build tests" ON)
 
@@ -25,4 +27,5 @@ if (LLU_BUILD_TESTS)
     llu_add_test(range_test)
     llu_add_test(squeue_test)
     llu_add_test(typename_test)
+    llu_add_test(yaml_test)
 endif ()
