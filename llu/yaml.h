@@ -165,6 +165,10 @@ template<typename T>
 void setTo(const Node &node, Eigen::Matrix<T, -1, 1> &value) {
   std::vector<T> result;
   setTo(node, result);
+  if (result.size() == 1 and value.size() > 0) {
+    value.setConstant(result[0]);
+    return;
+  }
   value = Eigen::Map<Eigen::Matrix<T, -1, 1>>(result.data(), result.size());
 }
 
@@ -179,6 +183,10 @@ template<typename T>
 void setTo(const Node &node, Eigen::Array<T, -1, 1> &value) {
   std::vector<T> result;
   setTo(node, result);
+  if (result.size() == 1 and value.size() > 0) {
+    value.setConstant(result[0]);
+    return;
+  }
   value = Eigen::Map<Eigen::Matrix<T, -1, 1>>(result.data(), result.size());
 }
 

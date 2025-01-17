@@ -137,11 +137,17 @@ TEST(LLU_YAML_TEST, LLU_READ_TEST2) {
   ASSERT_TRUE(arr3.isApprox(expected.array())) << "Expected arr3 = [1, 2, 3]";
   ASSERT_TRUE(arrx.isApprox(expected.array())) << "Expected arrx = [1, 2, 3]";
 
+  vecx.resize(3);
+  arrx.resize(3);
   llu::yml::setTo(node, "a", vec3);
+  llu::yml::setTo(node, "a", vecx);
   llu::yml::setTo(node, "a", arr3);
+  llu::yml::setTo(node, "a", arrx);
   expected = {1., 1., 1.};
   ASSERT_TRUE(vec3.isApprox(expected)) << "Expected vec3 = [1, 1, 1]";
+  ASSERT_TRUE(vecx.isApprox(expected)) << "Expected vecx = [1, 1, 1]";
   ASSERT_TRUE(arr3.isApprox(expected.array())) << "Expected arr3 = [1, 1, 1]";
+  ASSERT_TRUE(arrx.isApprox(expected.array())) << "Expected arrx = [1, 1, 1]";
 }
 
 TEST(LLU_YAML_TEST, LLU_READ_TEST3) {
