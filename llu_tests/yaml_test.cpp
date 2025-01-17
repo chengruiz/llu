@@ -176,6 +176,8 @@ TEST(LLU_YAML_TEST, LLU_READ_TEST4) {
   int a{};
   std::array<int, 4> b1{};
   llu::Vec4d b2;
+  std::vector<int> b3(2);
+  llu::VecXd b4;
 
   try {
     llu::yml::setTo(node, "not_a_key", a);
@@ -195,6 +197,19 @@ TEST(LLU_YAML_TEST, LLU_READ_TEST4) {
     llu::yml::setTo(node, "b", b2);
     ASSERT_TRUE(false) << "Expected an exception";
   } catch (const std::runtime_error &e) {}
+
+  try {
+    llu::yml::setTo(node, "b", b3);
+    ASSERT_TRUE(false) << "Expected an exception";
+  } catch (const std::runtime_error &e) {}
+
+  b4.resize(5);
+  try {
+    llu::yml::setTo(node, "b", b4);
+    ASSERT_TRUE(false) << "Expected an exception";
+  } catch (const std::runtime_error &e) {}
+  b4.resize(3);
+  llu::yml::setTo(node, "b", b4);
 
   try {
     llu::yml::getItem(node, "e");

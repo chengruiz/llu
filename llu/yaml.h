@@ -112,12 +112,26 @@ void setTo(const Node &node, Eigen::Array<T, -1, 1> &value);
 
 template<typename T>
 void setTo(const Node &node, std::vector<T> &value) {
-  value.clear();
-  if (node.IsScalar()) {
-    value.resize(1);
-    return setTo(node, value.back());
+  if (value.empty()) {
+    if (node.IsScalar()) {
+      value.resize(1);
+      setTo(node, value.back());
+    } else {
+      value.resize(node.size());
+      for (std::size_t i{}; i < node.size(); ++i) {
+        setTo(node[i], value[i]);
+      }
+    }
+    return;
   }
-  value.resize(node.size());
+  if (node.IsScalar()) {
+    setTo(node, value.front());
+    for (std::size_t i{1}; i < value.size(); ++i) {
+      value[i] = value.front();
+    }
+    return;
+  }
+  LLU_ASSERT_EQ(node.size(), value.size(), "Size mismatch between node `{}` and value `{}`.", node, value);
   for (std::size_t i{}; i < node.size(); ++i) {
     setTo(node[i], value[i]);
   }
@@ -164,11 +178,8 @@ void setTo(const Node &node, Eigen::Matrix<T, N, 1> &value) {
 template<typename T>
 void setTo(const Node &node, Eigen::Matrix<T, -1, 1> &value) {
   std::vector<T> result;
+  if (value.size() != 0) result.resize(value.size());
   setTo(node, result);
-  if (result.size() == 1 and value.size() > 0) {
-    value.setConstant(result[0]);
-    return;
-  }
   value = Eigen::Map<Eigen::Matrix<T, -1, 1>>(result.data(), result.size());
 }
 
@@ -182,11 +193,8 @@ void setTo(const Node &node, Eigen::Array<T, N, 1> &value) {
 template<typename T>
 void setTo(const Node &node, Eigen::Array<T, -1, 1> &value) {
   std::vector<T> result;
+  if (value.size() != 0) result.resize(value.size());
   setTo(node, result);
-  if (result.size() == 1 and value.size() > 0) {
-    value.setConstant(result[0]);
-    return;
-  }
   value = Eigen::Map<Eigen::Matrix<T, -1, 1>>(result.data(), result.size());
 }
 
