@@ -13,7 +13,11 @@ add_library(llu INTERFACE)
 target_include_directories(llu INTERFACE ${CMAKE_CURRENT_LIST_DIR})
 target_link_libraries(llu INTERFACE Eigen3::Eigen yaml-cpp fmt::fmt)
 
-option(LLU_BUILD_TESTS "Build tests" ON)
+if (CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    option(LLU_BUILD_TESTS "Build tests" ON)
+else ()
+    option(LLU_BUILD_TESTS "Build tests" OFF)
+endif ()
 
 if (LLU_BUILD_TESTS)
     find_package(GTest CONFIG REQUIRED)
