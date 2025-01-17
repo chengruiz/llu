@@ -20,6 +20,7 @@ if (LLU_BUILD_TESTS)
         target_link_libraries(llu_${name} llu GTest::gtest GTest::gtest_main)
     endfunction()
 
+    llu_add_test(chrono_test)
     llu_add_test(const_test)
     llu_add_test(geometry_test)
     llu_add_test(macro_test)
