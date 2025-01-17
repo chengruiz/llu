@@ -2,6 +2,7 @@
 #define LLU_CHRONO_H_
 
 #include <chrono>
+#include <thread>
 
 namespace llu {
 using Clock = std::chrono::high_resolution_clock;
@@ -16,6 +17,23 @@ template<typename Unit>
 typename Unit::rep timePassed(const TimePoint &start) {
   return duration_cast<Unit>(Clock::now() - start).count();
 }
+
+class Rate {
+public:
+  explicit Rate(int freq) : cycle_(static_cast<int>(1e9) / freq), event_time_(Clock::now()) {}
+
+  void sleep() {
+    event_time_ += cycle_;
+    while (Clock::now() < event_time_ - USec(50)) {
+      std::this_thread::sleep_for(USec(50));
+    }
+    while (Clock::now() < event_time_);
+  }
+
+private:
+  NSec cycle_;
+  TimePoint event_time_;
+};
 
 class Timer {
 public:
