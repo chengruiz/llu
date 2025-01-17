@@ -10,4 +10,9 @@
 #define LLU_ASSERT_NOT(cond, ...)  if (cond) LLU_ERROR(__VA_ARGS__)
 #define LLU_ASSERT(cond, ...)      LLU_ASSERT_NOT(not (cond), __VA_ARGS__)
 
+#define LLU_PRINT(...)             fmt::print("{}\n"    , fmt::format(__VA_ARGS__));
+#define LLU_INFO(...)              fmt::print("{}{}{}\n", ::llu::kGreen , fmt::format(__VA_ARGS__), ::llu::kClear);
+#define LLU_WARN(...)              fmt::print("{}{}{}\n", ::llu::kYellow, fmt::format(__VA_ARGS__), ::llu::kClear);
+#define LLU_CRIT(...)              fmt::print("{}{}{}\n", ::llu::kRed   , fmt::format(__VA_ARGS__), ::llu::kClear);
+
 #endif //  LLU_ERROR_H_

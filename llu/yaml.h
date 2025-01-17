@@ -24,7 +24,8 @@ template<> struct fmt::formatter<YAML::Node> : ostream_formatter {};
 /**
  * @brief This namespace contains utility functions for working with YAML.
  */
-namespace llu::yml {
+namespace llu {
+namespace yml {
 using Node = YAML::Node;
 
 /**
@@ -246,7 +247,8 @@ template<typename Value, typename Key>
 Value readIf(const Node &node, const Key &key, const Value &default_value) {
   return node ? readIf<Value>(node[key], default_value) : default_value;
 }
-} // namespace llu::yml
+} // namespace yml
+} // namespace llu
 
 #undef LLU_BAD_YAML
 
