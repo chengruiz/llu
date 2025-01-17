@@ -4,39 +4,39 @@
 #include <chrono>
 
 namespace llu {
-using clock_t = std::chrono::high_resolution_clock;
-using time_point_t = clock_t::time_point;
-using duration_t = clock_t::duration;
-using ms_t = std::chrono::milliseconds;
-using us_t = std::chrono::microseconds;
-using ns_t = std::chrono::nanoseconds;
+using Clock = std::chrono::high_resolution_clock;
+using TimePoint = Clock::time_point;
+using Duration = Clock::duration;
+using MSec = std::chrono::milliseconds;
+using USec = std::chrono::microseconds;
+using NSec = std::chrono::nanoseconds;
 using std::chrono::duration_cast;
 
 template<typename Unit>
-typename Unit::rep timePassed(const time_point_t &start) {
-  return duration_cast<Unit>(clock_t::now() - start).count();
+typename Unit::rep timePassed(const TimePoint &start) {
+  return duration_cast<Unit>(Clock::now() - start).count();
 }
 
 class Timer {
 public:
-  void start() { start_ = clock_t::now(); }
+  void start() { start_ = Clock::now(); }
 
   void stop() {
-    stop_ = clock_t::now();
+    stop_ = Clock::now();
     count_ += 1;
     duration_ += stop_ - start_;
   }
 
   void clear() {
-    duration_ = duration_t::zero();
+    duration_ = Duration::zero();
     count_ = 0;
   }
 
   [[nodiscard]] std::size_t count() const { return count_; }
-  [[nodiscard]] duration_t total() const { return duration_; }
+  [[nodiscard]] Duration total() const { return duration_; }
 
-  [[nodiscard]] duration_t mean() const {
-    if (count_ == 0) return duration_t{0};
+  [[nodiscard]] Duration mean() const {
+    if (count_ == 0) return Duration{0};
     return duration_ / count_;
   }
 
@@ -44,8 +44,8 @@ public:
   template<typename T> [[nodiscard]] T mean() { return duration_cast<T>(mean()); }
 
 private:
-  time_point_t start_, stop_;
-  duration_t duration_{0};
+  TimePoint start_, stop_;
+  Duration duration_{0};
   std::size_t count_ = 0;
 };
 
