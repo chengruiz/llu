@@ -14,7 +14,9 @@
 #include <llu/range.h>
 #include <llu/typename.h>
 
+#if FMT_VERSION >= 90000
 template<> struct fmt::formatter<YAML::Node> : ostream_formatter {};
+#endif
 
 #define LLU_BAD_YAML(node, type) \
     LLU_ERROR("Bad conversion of Node `{}` to type `{}`.", node, ::llu::getTypeName(type))
