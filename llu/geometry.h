@@ -15,7 +15,7 @@ class Quaternion {
   static constexpr T PI = static_cast<T>(M_PI);
 
 public:
-  LLU_ASSERT_IS_FLOATING_POINT(T);
+  LLU_ASSERT_FP(T);
   Quaternion(): data_{1., 0., 0., 0.} {}
   Quaternion(const Quaternion &q) : data_(q.data_) {}
   Quaternion(T w, T x, T y, T z) : data_{w, x, y, z} { normalize(); }

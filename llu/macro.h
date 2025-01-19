@@ -12,9 +12,9 @@
 
 #if __cplusplus >= 201703L
 #include <type_traits>
-#define LLU_ASSERT_IS_FLOATING_POINT(T) static_assert(std::is_floating_point_v<T>)
+#define LLU_ASSERT_FP(T) static_assert(std::is_floating_point_v<T>)
 #else
-#define LLU_ASSERT_IS_FLOATING_POINT(T)
+#define LLU_ASSERT_FP(T)
 #endif
 
 #endif  // LLU_MACRO_H_

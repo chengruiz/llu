@@ -1,5 +1,5 @@
-#ifndef LLU_TYPE_H_
-#define LLU_TYPE_H_
+#ifndef LLU_TYPENAME_H_
+#define LLU_TYPENAME_H_
 
 #include <cxxabi.h>
 #include <memory>
@@ -23,4 +23,4 @@ std::string getTypeName(const T &v) {
 }
 } // namespace llu
 
-#endif  // LLU_TYPE_H_
+#endif  // LLU_TYPENAME_H_
