@@ -3,6 +3,7 @@
 
 #include <exception>
 #include <fmt/core.h>
+#include <fmt/chrono.h>
 
 #include <llu/const.h>
 #include <llu/macro.h>
