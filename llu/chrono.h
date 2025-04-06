@@ -5,21 +5,22 @@
 #include <thread>
 
 namespace llu {
-using Clock = std::chrono::high_resolution_clock;
+using Clock     = std::chrono::high_resolution_clock;
 using TimePoint = Clock::time_point;
-using Duration = Clock::duration;
+using Duration  = Clock::duration;
+
 using MSec = std::chrono::milliseconds;
 using USec = std::chrono::microseconds;
 using NSec = std::chrono::nanoseconds;
 using std::chrono::duration_cast;
 
-template<typename Unit>
+template <typename Unit>
 typename Unit::rep timePassed(const TimePoint &start) {
   return duration_cast<Unit>(Clock::now() - start).count();
 }
 
 class Rate {
-public:
+ public:
   explicit Rate(int freq) : cycle_(static_cast<int>(1e9) / freq), event_time_(Clock::now()) {}
 
   void sleep() {
@@ -30,13 +31,13 @@ public:
     while (Clock::now() < event_time_);
   }
 
-private:
+ private:
   NSec cycle_;
   TimePoint event_time_;
 };
 
 class Timer {
-public:
+ public:
   void start() { start_ = Clock::now(); }
 
   void stop() {
@@ -47,7 +48,7 @@ public:
 
   void clear() {
     duration_ = Duration::zero();
-    count_ = 0;
+    count_    = 0;
   }
 
   [[nodiscard]] std::size_t count() const { return count_; }
@@ -58,23 +59,29 @@ public:
     return duration_ / count_;
   }
 
-  template<typename T> [[nodiscard]] T total() { return duration_cast<T>(total()); }
-  template<typename T> [[nodiscard]] T mean() { return duration_cast<T>(mean()); }
+  template <typename T>
+  [[nodiscard]] T total() {
+    return duration_cast<T>(total());
+  }
+  template <typename T>
+  [[nodiscard]] T mean() {
+    return duration_cast<T>(mean());
+  }
 
-private:
+ private:
   TimePoint start_, stop_;
   Duration duration_{0};
   std::size_t count_ = 0;
 };
 
 class TimerContext {
-public:
+ public:
   explicit TimerContext(Timer &timer) : timer_{timer} { timer_.start(); }
   ~TimerContext() { timer_.stop(); }
 
-private:
+ private:
   Timer &timer_;
 };
-} // namespace llu
+}  // namespace llu
 
 #endif  // LLU_CHRONO_H_

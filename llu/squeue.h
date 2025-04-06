@@ -5,15 +5,15 @@
 #include <exception>
 #include <vector>
 
-// @formatter:off
 namespace llu {
-template<typename T>
+template <typename T>
 class StaticQueue {
-public:
+ public:
   StaticQueue() = default;
   explicit StaticQueue(std::size_t capacity) : data_(capacity), capacity_(capacity) {}
   void allocate(std::size_t size);
 
+  // clang-format off
   [[nodiscard]] bool is_empty() const noexcept { return size_ == 0; }
   [[nodiscard]] bool is_full() const noexcept { return size_ == capacity_; }
   [[nodiscard]] std::size_t size() const noexcept { return size_; }
@@ -30,12 +30,17 @@ public:
   [[nodiscard]] const T &at(int64_t idx) const { return data_[get_index(idx)]; }
   [[nodiscard]] const T &get(int64_t idx, const T &default_value) const;
   [[nodiscard]] const T &get_padded(int64_t idx) const;
+  // clang-format on
 
   void clear() noexcept { front_ = size_ = 0; }
-  void clear_all() noexcept { clear(); data_.clear(); }
+  void clear_all() noexcept {
+    clear();
+    data_.clear();
+  }
 
   struct iterator;
   struct const_iterator;
+  // clang-format off
   iterator       begin()       { return iterator(this);              }
   const_iterator begin() const { return const_iterator(this);        }
   iterator       end()         { return iterator(this, size_);       }
@@ -43,9 +48,12 @@ public:
 
   struct IndexOutOfRange : std::exception { const char *what() const noexcept override { return "Queue Index Out Of Range!"; }  };
   struct EmptyQueue      : std::exception { const char *what() const noexcept override { return "Empty Queue!"; } };
+  // clang-format on
 
-private:
-  void assert_not_empty() const { if (is_empty()) throw EmptyQueue(); }
+ private:
+  void assert_not_empty() const {
+    if (is_empty()) throw EmptyQueue();
+  }
   [[nodiscard]] int64_t get_index(int64_t idx) const;
 
   std::vector<T> data_{};
@@ -53,7 +61,8 @@ private:
   std::size_t capacity_ = 0;
 };
 
-template<typename T> void StaticQueue<T>::allocate(std::size_t size) {
+template <typename T>
+void StaticQueue<T>::allocate(std::size_t size) {
   if (data_.empty()) {
     data_.resize(size);
     capacity_ = size;
@@ -65,13 +74,15 @@ template<typename T> void StaticQueue<T>::allocate(std::size_t size) {
       temp[i] = at(start + i);
     }
     if (size_ > size) size_ = size;
-    front_ = 0;
+    front_    = 0;
     capacity_ = size;
-    data_ = std::move(temp);
+    data_     = std::move(temp);
   }
 }
 
-template<typename T> template<typename ...Args> void StaticQueue<T>::emplace_back(Args &&...args) {
+template <typename T>
+template <typename... Args>
+void StaticQueue<T>::emplace_back(Args &&...args) {
   if (is_full()) {
     front_ = (front_ + 1) % capacity_;
   } else {
@@ -80,52 +91,60 @@ template<typename T> template<typename ...Args> void StaticQueue<T>::emplace_bac
   data_[(front_ + size_ - 1) % capacity_] = T(std::forward<Args>(args)...);
 }
 
-template<typename T> const T &StaticQueue<T>::get(int64_t idx, const T &default_value) const {
+template <typename T>
+const T &StaticQueue<T>::get(int64_t idx, const T &default_value) const {
   if (idx < 0) idx += size_;
   if (idx < 0 or idx >= size_) return default_value;
   return data_[(front_ + idx) % capacity_];
 }
 
-template<typename T> const T &StaticQueue<T>::get_padded(int64_t idx) const {
+template <typename T>
+const T &StaticQueue<T>::get_padded(int64_t idx) const {
   if (idx < 0) idx = static_cast<int64_t>(size_) + idx;
   if (idx < 0) return front();
   if (idx >= size_) return back();
   return data_[(front_ + idx) % capacity_];
 }
 
-template<typename T> int64_t StaticQueue<T>::get_index(int64_t idx) const {
+template <typename T>
+int64_t StaticQueue<T>::get_index(int64_t idx) const {
   if (idx < 0) idx += size_;
   if (idx < 0 or idx >= size_) throw IndexOutOfRange();
   return (front_ + idx) % capacity_;
 }
 
-template<typename T>
+template <typename T>
 struct StaticQueue<T>::iterator {
   explicit iterator(StaticQueue *q, std::size_t idx = 0) : q_(q), idx_(idx) {}
-  iterator &operator++() { idx_++; return *this; }
+  iterator &operator++() {
+    idx_++;
+    return *this;
+  }
   bool operator==(iterator other) const { return idx_ == other.idx_ && q_ == other.q_; }
   bool operator!=(iterator other) const { return idx_ != other.idx_ || q_ != other.q_; }
   T &operator*() const { return q_->at(idx_); }
 
-private:
+ private:
   StaticQueue *q_;
   std::size_t idx_;
 };
 
-template<typename T>
+template <typename T>
 struct StaticQueue<T>::const_iterator {
   explicit const_iterator(const StaticQueue *q, std::size_t idx = 0) : q_(q), idx_(idx) {}
-  const_iterator &operator++() { idx_++; return *this; }
+  const_iterator &operator++() {
+    idx_++;
+    return *this;
+  }
   bool operator==(const_iterator other) const { return idx_ == other.idx_ && q_ == other.q_; }
   bool operator!=(const_iterator other) const { return idx_ != other.idx_ || q_ != other.q_; }
   const T &operator*() const { return q_->at(idx_); }
 
-private:
+ private:
   const StaticQueue *q_;
   std::size_t idx_;
 };
 
-} // namespace llu
-
+}  // namespace llu
 
 #endif  // LLU_SQUEUE_H_

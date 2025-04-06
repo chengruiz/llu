@@ -6,7 +6,7 @@
 #endif
 
 #define LLU_TO_STR_IMPL(...) #__VA_ARGS__
-#define LLU_TO_STR(text) LLU_TO_STR_IMPL(text)
+#define LLU_TO_STR(text)     LLU_TO_STR_IMPL(text)
 
 #define LLU_FILELINE() "[" __FILE_NAME__ ":" LLU_TO_STR(__LINE__) "]"
 

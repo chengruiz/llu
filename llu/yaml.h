@@ -1,10 +1,10 @@
 #ifndef LLU_YAML_H_
 #define LLU_YAML_H_
 
-#include <Eigen/Core>
 #include <fmt/ostream.h>
 #include <fmt/ranges.h>
 #include <yaml-cpp/yaml.h>
+#include <Eigen/Core>
 
 #if __cplusplus >= 201703L
 #include <optional>
@@ -15,11 +15,11 @@
 #include <llu/typename.h>
 
 #if FMT_VERSION >= 90000
-template<> struct fmt::formatter<YAML::Node> : ostream_formatter {};
+template <>
+struct fmt::formatter<YAML::Node> : ostream_formatter {};
 #endif
 
-#define LLU_BAD_YAML(node, type) \
-    LLU_ERROR("Bad conversion of Node `{}` to type `{}`.", node, ::llu::getTypeName(type))
+#define LLU_BAD_YAML(node, type) LLU_ERROR("Bad conversion of Node `{}` to type `{}`.", node, ::llu::getTypeName(type))
 
 /**
  * @brief This namespace contains utility functions for working with YAML.
@@ -35,7 +35,7 @@ using Node = YAML::Node;
  * @param node The YAML node to check.
  * @return true if the node can be converted to the given type, false otherwise.
  */
-template<typename T>
+template <typename T>
 bool isType(const Node &node) {
   try {
     node.as<T>();
@@ -48,27 +48,23 @@ bool isType(const Node &node) {
 inline bool isBool(const Node &node) { return isType<bool>(node); }
 inline bool isFloat(const Node &node) { return isType<double>(node); }
 
-inline bool isNTuple(const Node &node, std::size_t size) {
-  return node.IsSequence() and node.size() == size;
-}
+inline bool isNTuple(const Node &node, std::size_t size) { return node.IsSequence() and node.size() == size; }
 
 inline bool isValid(const Node &node) { return static_cast<bool>(node); }
 
-template<typename Key>
+template <typename Key>
 bool isValid(const Node &node, const Key &key) {
   return node and not node.IsScalar() and node[key];
 }
 
-template<typename Key, typename...SeqKeys>
-bool isValid(const Node &node, const Key &key, SeqKeys...seq_keys) {
+template <typename Key, typename... SeqKeys>
+bool isValid(const Node &node, const Key &key, SeqKeys... seq_keys) {
   return node and not node.IsScalar() and isValid(node[key], seq_keys...);
 }
 
-inline void assertValid(const Node &node) {
-  LLU_ASSERT(node, "Invalid node.");
-}
+inline void assertValid(const Node &node) { LLU_ASSERT(node, "Invalid node."); }
 
-template<typename Key>
+template <typename Key>
 void assertValid(const Node &node, const Key &key) {
   assertValid(node);
   LLU_ASSERT(node[key], "Missing Key `{}` for node `{}`.", key, node);
@@ -79,38 +75,38 @@ inline void assertNTuple(const Node &node, std::size_t size) {
   LLU_ASSERT(isNTuple(node, size), "Node `{}` requires to be a {}-tuple.", node, size);
 }
 
-template<typename Key>
+template <typename Key>
 void assertNTuple(const Node &node, const Key &key, std::size_t size) {
   assertValid(node, key);
   LLU_ASSERT(isNTuple(node[key], size), "Value of key `{}` requires to be a {}-tuple for node `{}`.", key, size, node);
 }
 
 namespace impl {
-template<typename Value>
+template <typename Value>
 void setTo(const Node &node, Value &value) {
   try {
     value = node.as<Value>();
-  } catch (const std::runtime_error &) { /// gives a more detailed information
+  } catch (const std::runtime_error &) {  // Gives a more detailed information
     LLU_BAD_YAML(node, value);
   }
 }
 
-template<typename T>
+template <typename T>
 void setTo(const Node &node, std::vector<T> &value);
-template<typename T, std::size_t N>
+template <typename T, std::size_t N>
 void setTo(const Node &node, std::array<T, N> &value);
-template<typename dtype>
+template <typename dtype>
 void setTo(const Node &node, range_t<dtype> &value);
-template<typename T, int N>
+template <typename T, int N>
 void setTo(const Node &node, Eigen::Matrix<T, N, 1> &value);
-template<typename T>
+template <typename T>
 void setTo(const Node &node, Eigen::Matrix<T, -1, 1> &value);
-template<typename T, int N>
+template <typename T, int N>
 void setTo(const Node &node, Eigen::Array<T, N, 1> &value);
-template<typename T>
+template <typename T>
 void setTo(const Node &node, Eigen::Array<T, -1, 1> &value);
 
-template<typename T>
+template <typename T>
 void setTo(const Node &node, std::vector<T> &value) {
   if (value.empty()) {
     if (node.IsScalar()) {
@@ -137,7 +133,7 @@ void setTo(const Node &node, std::vector<T> &value) {
   }
 }
 
-template<typename T, std::size_t N>
+template <typename T, std::size_t N>
 void setTo(const Node &node, std::array<T, N> &value) {
   static_assert(N != 0, "setTo: Invalid array size 0.");
   if (node.IsScalar()) {
@@ -152,7 +148,7 @@ void setTo(const Node &node, std::array<T, N> &value) {
   }
 }
 
-template<typename dtype>
+template <typename dtype>
 void setTo(const Node &node, range_t<dtype> &value) {
   if (node.IsScalar()) {
     setTo(node, value.lower());
@@ -168,14 +164,14 @@ void setTo(const Node &node, range_t<dtype> &value) {
   }
 }
 
-template<typename T, int N>
+template <typename T, int N>
 void setTo(const Node &node, Eigen::Matrix<T, N, 1> &value) {
   std::array<T, N> result;
   setTo(node, result);
   value = Eigen::Map<Eigen::Matrix<T, N, 1>>(result.data());
 }
 
-template<typename T>
+template <typename T>
 void setTo(const Node &node, Eigen::Matrix<T, -1, 1> &value) {
   std::vector<T> result;
   if (value.size() != 0) result.resize(value.size());
@@ -183,14 +179,14 @@ void setTo(const Node &node, Eigen::Matrix<T, -1, 1> &value) {
   value = Eigen::Map<Eigen::Matrix<T, -1, 1>>(result.data(), result.size());
 }
 
-template<typename T, int N>
+template <typename T, int N>
 void setTo(const Node &node, Eigen::Array<T, N, 1> &value) {
   std::array<T, N> result;
   setTo(node, result);
   value = Eigen::Map<Eigen::Matrix<T, N, 1>>(result.data());
 }
 
-template<typename T>
+template <typename T>
 void setTo(const Node &node, Eigen::Array<T, -1, 1> &value) {
   std::vector<T> result;
   if (value.size() != 0) result.resize(value.size());
@@ -199,7 +195,7 @@ void setTo(const Node &node, Eigen::Array<T, -1, 1> &value) {
 }
 
 #if __cplusplus >= 201703L
-template<typename T>
+template <typename T>
 void setTo(const Node &node, std::optional<T> &value) {
   if (node.IsNull()) {
     value.reset();
@@ -210,61 +206,61 @@ void setTo(const Node &node, std::optional<T> &value) {
   value = inner_value;
 }
 #endif
-} // namespace impl
+}  // namespace impl
 
-template<typename Value>
+template <typename Value>
 void setTo(const Node &node, Value &value) {
   assertValid(node);
   impl::setTo(node, value);
 }
 
-template<typename Value, typename Key>
+template <typename Value, typename Key>
 void setTo(const Node &node, const Key &key, Value &value) {
   assertValid(node, key);
   impl::setTo(node[key], value);
 }
 
-template<typename Value>
+template <typename Value>
 void setIf(const Node &node, Value &value) {
   if (node) impl::setTo(node, value);
 }
 
-template<typename Value, typename Key>
+template <typename Value, typename Key>
 void setIf(const Node &node, const Key &key, Value &value) {
   if (isValid(node, key)) impl::setTo(node[key], value);
 }
 
-template<typename Key>
+template <typename Key>
 Node getItem(const Node &node, const Key &key) {
   assertValid(node, key);
   return node[key];
 }
 
-template<typename Value>
+template <typename Value>
 Value readAs(const Node &node) {
   Value value;
   setTo(node, value);
   return value;
 }
 
-template<typename Value, typename Key>
+template <typename Value, typename Key>
 Value readAs(const Node &node, const Key &key) {
   Value value;
   setTo(node, key, value);
   return value;
 }
 
-template<typename Value>
+template <typename Value>
 Value readIf(const Node &node, const Value &default_value) {
   return node ? readAs<Value>(node) : default_value;
 }
 
-template<typename Value, typename Key>
+template <typename Value, typename Key>
 Value readIf(const Node &node, const Key &key, const Value &default_value) {
   return node ? readIf<Value>(node[key], default_value) : default_value;
 }
-} // namespace yml
-} // namespace llu
+}  // namespace yml
+}  // namespace llu
 
 #undef LLU_BAD_YAML
 

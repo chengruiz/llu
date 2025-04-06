@@ -24,6 +24,6 @@ inline bool getenv(const char *name, long &result) {
   result = value;
   return true;
 }
-} // namespace llu
+}  // namespace llu
 
-#endif // LLU_ENV_H_
+#endif  // LLU_ENV_H_

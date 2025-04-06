@@ -1,0 +1,5 @@
+BasedOnStyle: Google
+ColumnLimit: 120
+AlignConsecutiveAssignments: Consecutive
+AlignConsecutiveMacros: Consecutive
+IncludeBlocks: Preserve

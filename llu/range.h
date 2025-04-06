@@ -6,11 +6,11 @@
 #include <llu/math.h>
 
 namespace llu {
-template<typename T>
+template <typename T>
 class range_t : public std::pair<T, T> {
   using Pair = std::pair<T, T>;
 
-public:
+ public:
   using std::pair<T, T>::pair;
   [[nodiscard]] T &lower() { return Pair::first; }
   [[nodiscard]] const T &lower() const { return Pair::first; }
@@ -22,20 +22,21 @@ public:
 #if __cplusplus >= 201703L
 using std::clamp;
 #else
-template<typename T>
+template <typename T>
 T clamp(T val, T lower, T upper) {
   return std::max(lower, std::min(val, upper));
 }
 #endif
 
-template<typename T>
+template <typename T>
 T clamp(T val, const range_t<T> &range) {
   return clamp(val, range.lower(), range.upper());
 }
 
-template<typename T>
-T interpolate(range_t<T> range, T k) { return interpolate(range.lower(), range.upper(), k); }
-} // namespace llu
+template <typename T>
+T interpolate(range_t<T> range, T k) {
+  return interpolate(range.lower(), range.upper(), k);
+}
+}  // namespace llu
 
-
-#endif // LLU_RANGE_H_
+#endif  // LLU_RANGE_H_

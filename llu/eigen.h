@@ -3,10 +3,10 @@
 
 #include <Eigen/Core>
 
-#define LLU_EIGEN_ALIAS(alias, ...)                 \
-  using alias    = __VA_ARGS__;                     \
-  using r##alias = Eigen::Ref<alias>;               \
-  using c##alias = const Eigen::Ref<const alias> &
+#define LLU_EIGEN_ALIAS(alias, ...)   \
+  using alias    = __VA_ARGS__;       \
+  using r##alias = Eigen::Ref<alias>; \
+  using c##alias = const Eigen::Ref<const alias>&
 
 namespace llu {
 LLU_EIGEN_ALIAS(Arr1f, Eigen::Array<float, 1, 1>);
@@ -50,7 +50,6 @@ LLU_EIGEN_ALIAS(Mat2d, Eigen::Matrix2d);
 LLU_EIGEN_ALIAS(Mat3d, Eigen::Matrix3d);
 LLU_EIGEN_ALIAS(Mat4d, Eigen::Matrix4d);
 LLU_EIGEN_ALIAS(MatXd, Eigen::MatrixXd);
-} // namespace llu
+}  // namespace llu
 
-
-#endif // LLU_EIGEN_H_
+#endif  // LLU_EIGEN_H_

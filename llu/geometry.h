@@ -7,16 +7,16 @@
 #include <llu/macro.h>
 
 namespace llu {
-template<typename T>
+template <typename T>
 class Quaternion {
   LLU_EIGEN_ALIAS(Vec3T, Eigen::Matrix<T, 3, 1>);
   LLU_EIGEN_ALIAS(Vec4T, Eigen::Matrix<T, 4, 1>);
   LLU_EIGEN_ALIAS(Mat3T, Eigen::Matrix<T, 3, 3>);
   static constexpr T PI = static_cast<T>(M_PI);
 
-public:
+ public:
   LLU_ASSERT_FP(T);
-  Quaternion(): data_{1., 0., 0., 0.} {}
+  Quaternion() : data_{1., 0., 0., 0.} {}
   Quaternion(const Quaternion &q) : data_(q.data_) {}
   Quaternion(T w, T x, T y, T z) : data_{w, x, y, z} { normalize(); }
   explicit Quaternion(const std::array<T, 4> &data) : data_(data) { normalize(); }
@@ -44,7 +44,7 @@ public:
   [[nodiscard]] Vec3T operator*(const Vec3T &vec) const;
   [[nodiscard]] bool isApprox(const Quaternion &other, T prec) const;
 
-private:
+ private:
   std::array<T, 4> data_;
 
   [[nodiscard]] T norm() const { return std::sqrt(squaredNorm()); }
@@ -60,7 +60,7 @@ private:
 using Quatf = Quaternion<float>;
 using Quatd = Quaternion<double>;
 
-template<typename T>
+template <typename T>
 auto Quaternion<T>::fromMatrix(cMat3T mat) -> Quaternion {
   // https://en.wikipedia.org/wiki/Rotation_matrix#Quaternion
 
@@ -69,14 +69,14 @@ auto Quaternion<T>::fromMatrix(cMat3T mat) -> Quaternion {
   T s = 1 / (2 * r);
 
   return {
-    r / 2,
-    (mat(2, 1) - mat(1, 2)) * s,
-    (mat(0, 2) - mat(2, 0)) * s,
-    (mat(1, 0) - mat(0, 1)) * s,
+      r / 2,
+      (mat(2, 1) - mat(1, 2)) * s,
+      (mat(0, 2) - mat(2, 0)) * s,
+      (mat(1, 0) - mat(0, 1)) * s,
   };
 }
 
-template<typename T>
+template <typename T>
 auto Quaternion<T>::operator*=(T coef) -> Quaternion & {
   data_[0] *= coef;
   data_[1] *= coef;
@@ -85,41 +85,33 @@ auto Quaternion<T>::operator*=(T coef) -> Quaternion & {
   return *this;
 }
 
-template<typename T>
+template <typename T>
 auto Quaternion<T>::operator*(const Quaternion &other) const -> Quaternion {
   return {
-    w() * other.w() - x() * other.x() - y() * other.y() - z() * other.z(),
-    w() * other.x() + x() * other.w() + y() * other.z() - z() * other.y(),
-    w() * other.y() - x() * other.z() + y() * other.w() + z() * other.x(),
-    w() * other.z() + x() * other.y() - y() * other.x() + z() * other.w(),
+      w() * other.w() - x() * other.x() - y() * other.y() - z() * other.z(),
+      w() * other.x() + x() * other.w() + y() * other.z() - z() * other.y(),
+      w() * other.y() - x() * other.z() + y() * other.w() + z() * other.x(),
+      w() * other.z() + x() * other.y() - y() * other.x() + z() * other.w(),
   };
 }
 
-template<typename T> bool Quaternion<T>::isApprox(const Quaternion &other, T prec) const {
+template <typename T>
+bool Quaternion<T>::isApprox(const Quaternion &other, T prec) const {
   Vec4T coeffs1 = coeffs();
   Vec4T coeffs2 = other.coeffs();
   return coeffs1.isApprox(coeffs2, prec) or coeffs1.isApprox(-coeffs2, prec);
 }
 
-template<typename T>
+template <typename T>
 auto Quaternion<T>::eulerAngles() const -> Vec3T {
   return {
-    std::atan2(
-      2 * (w() * x() + y() * z()),
-      1 - 2 * (x() * x() + y() * y())
-    ),
-    -PI / 2 + 2 * std::atan2(
-      std::sqrt(1 + 2 * (w() * y() - x() * z())),
-      std::sqrt(1 - 2 * (w() * y() - x() * z()))
-    ),
-    std::atan2(
-      2 * (w() * z() + x() * y()),
-      1 - 2 * (y() * y() + z() * z())
-    )
+      std::atan2(2 * (w() * x() + y() * z()), 1 - 2 * (x() * x() + y() * y())),
+      -PI / 2 + 2 * std::atan2(std::sqrt(1 + 2 * (w() * y() - x() * z())), std::sqrt(1 - 2 * (w() * y() - x() * z()))),
+      std::atan2(2 * (w() * z() + x() * y()), 1 - 2 * (y() * y() + z() * z())),
   };
 }
 
-template<typename T>
+template <typename T>
 auto Quaternion<T>::matrix() const -> Mat3T {
   Mat3T R;
   R(0, 0) = 1 - 2 * (y() * y() + z() * z());
@@ -134,53 +126,38 @@ auto Quaternion<T>::matrix() const -> Mat3T {
   return R;
 }
 
-template<typename T>
+template <typename T>
 auto Quaternion<T>::operator*(const Vec3T &vec) const -> Vec3T {
   Vec3T u{x(), y(), z()};
   return 2 * u.dot(vec) * u + (w() * w() - u.dot(u)) * vec + 2 * w() * u.cross(vec);
 }
 
-template<typename T>
+template <typename T>
 std::ostream &operator<<(std::ostream &os, const Quaternion<T> &q) {
   return os << "Quaternion(w=" << q.w() << ", x=" << q.x() << ", y=" << q.y() << ", z=" << q.z() << ")";
 }
 
 inline auto rpy2rot(float roll, float pitch, float yaw) {
-  return Eigen::AngleAxisf(yaw, Vec3f::UnitZ()) *
-      Eigen::AngleAxisf(pitch, Vec3f::UnitY()) *
-      Eigen::AngleAxisf(roll, Vec3f::UnitX());
+  return Eigen::AngleAxisf(yaw, Vec3f::UnitZ()) * Eigen::AngleAxisf(pitch, Vec3f::UnitY()) *
+         Eigen::AngleAxisf(roll, Vec3f::UnitX());
 }
 
 inline auto rpy2rot(double roll, double pitch, double yaw) {
-  return Eigen::AngleAxisd(yaw, Vec3d::UnitZ()) *
-      Eigen::AngleAxisd(pitch, Vec3d::UnitY()) *
-      Eigen::AngleAxisd(roll, Vec3d::UnitX());
+  return Eigen::AngleAxisd(yaw, Vec3d::UnitZ()) * Eigen::AngleAxisd(pitch, Vec3d::UnitY()) *
+         Eigen::AngleAxisd(roll, Vec3d::UnitX());
 }
 
-inline auto rpy2rot(const Vec3f &rpy) {
-  return rpy2rot(rpy.x(), rpy.y(), rpy.z());
-}
+inline auto rpy2rot(const Vec3f &rpy) { return rpy2rot(rpy.x(), rpy.y(), rpy.z()); }
 
-inline auto rpy2rot(const Vec3d &rpy) {
-  return rpy2rot(rpy.x(), rpy.y(), rpy.z());
-}
+inline auto rpy2rot(const Vec3d &rpy) { return rpy2rot(rpy.x(), rpy.y(), rpy.z()); }
 
 inline Vec3f mat2rpy(const Mat3f &mat) {
-  return {
-    std::atan2(mat(2, 1), mat(2, 2)),
-    std::asin(-mat(2, 0)),
-    std::atan2(mat(1, 0), mat(0, 0))
-  };
+  return {std::atan2(mat(2, 1), mat(2, 2)), std::asin(-mat(2, 0)), std::atan2(mat(1, 0), mat(0, 0))};
 }
 
 inline Vec3d mat2rpy(const Mat3d &mat) {
-  return {
-    std::atan2(mat(2, 1), mat(2, 2)),
-    std::asin(-mat(2, 0)),
-    std::atan2(mat(1, 0), mat(0, 0))
-  };
+  return {std::atan2(mat(2, 1), mat(2, 2)), std::asin(-mat(2, 0)), std::atan2(mat(1, 0), mat(0, 0))};
 }
-} // namespace llu
-
+}  // namespace llu
 
 #endif  // LLU_GEOMETRY_H_
