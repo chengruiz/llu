@@ -19,7 +19,7 @@ inline bool getenv(const char *name, long &result) {
   if (var == nullptr) return false;
   char *end{nullptr};
   long value = std::strtol(var, &end, 10);
-  LLU_ASSERT(*end == '\0', "Environment Variable `{}` ({}) cannot be converted to a integer.", name, var);
+  LLU_ASSERT(*end == '\0', "Environment Variable '{}' ({}) cannot be converted to a integer.", name, var);
 
   result = value;
   return true;

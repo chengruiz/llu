@@ -19,7 +19,7 @@ template <>
 struct fmt::formatter<YAML::Node> : ostream_formatter {};
 #endif
 
-#define LLU_BAD_YAML(node, type) LLU_ERROR("Bad conversion of Node `{}` to type `{}`.", node, ::llu::getTypeName(type))
+#define LLU_BAD_YAML(node, type) LLU_ERROR("Bad conversion of Node '{}' to type '{}'.", node, ::llu::getTypeName(type))
 
 /**
  * @brief This namespace contains utility functions for working with YAML.
@@ -67,18 +67,18 @@ inline void assertValid(const Node &node) { LLU_ASSERT(node, "Invalid node."); }
 template <typename Key>
 void assertValid(const Node &node, const Key &key) {
   assertValid(node);
-  LLU_ASSERT(node[key], "Missing Key `{}` for node `{}`.", key, node);
+  LLU_ASSERT(node[key], "Missing Key '{}' for node '{}'.", key, node);
 }
 
 inline void assertNTuple(const Node &node, std::size_t size) {
   assertValid(node);
-  LLU_ASSERT(isNTuple(node, size), "Node `{}` requires to be a {}-tuple.", node, size);
+  LLU_ASSERT(isNTuple(node, size), "Node '{}' requires to be a {}-tuple.", node, size);
 }
 
 template <typename Key>
 void assertNTuple(const Node &node, const Key &key, std::size_t size) {
   assertValid(node, key);
-  LLU_ASSERT(isNTuple(node[key], size), "Value of key `{}` requires to be a {}-tuple for node `{}`.", key, size, node);
+  LLU_ASSERT(isNTuple(node[key], size), "Value of key '{}' requires to be a {}-tuple for node '{}'.", key, size, node);
 }
 
 namespace impl {
@@ -127,7 +127,7 @@ void setTo(const Node &node, std::vector<T> &value) {
     }
     return;
   }
-  LLU_ASSERT_EQ(node.size(), value.size(), "Size mismatch between node `{}` and value `{}`.", node, value);
+  LLU_ASSERT_EQ(node.size(), value.size(), "Size mismatch between node '{}' and value '{}'.", node, value);
   for (std::size_t i{}; i < node.size(); ++i) {
     setTo(node[i], value[i]);
   }
