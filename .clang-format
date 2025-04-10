@@ -3,3 +3,12 @@ ColumnLimit: 120
 AlignConsecutiveAssignments: Consecutive
 AlignConsecutiveMacros: Consecutive
 IncludeBlocks: Preserve
+AllowShortBlocksOnASingleLine: Empty
+DerivePointerAlignment: false
+PointerAlignment: Right
+ReferenceAlignment: Right
+
+KeepEmptyLines:
+  AtEndOfFile: true
+EmptyLineBeforeAccessModifier: LogicalBlock
+WrapNamespaceBodyWithEmptyLines: Never

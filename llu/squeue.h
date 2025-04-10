@@ -144,7 +144,6 @@ struct StaticQueue<T>::const_iterator {
   const StaticQueue *q_;
   std::size_t idx_;
 };
-
 }  // namespace llu
 
 #endif  // LLU_SQUEUE_H_

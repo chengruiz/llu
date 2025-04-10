@@ -5,7 +5,6 @@
 #include <cmath>
 
 #include <llu/const.h>
-#include <llu/macro.h>
 
 namespace llu {
 #ifndef M_PIf

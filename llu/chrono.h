@@ -21,7 +21,7 @@ typename Unit::rep timePassed(const TimePoint &start) {
 
 class Rate {
  public:
-  explicit Rate(int freq) : cycle_(static_cast<int>(1e9) / freq), event_time_(Clock::now()) {}
+  explicit Rate(std::size_t freq) : cycle_(static_cast<std::size_t>(1e9) / freq), event_time_(Clock::now()) {}
 
   void sleep() {
     event_time_ += cycle_;
