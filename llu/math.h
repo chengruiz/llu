@@ -41,10 +41,20 @@ auto unit(const Eigen::MatrixBase<Derived> &x) {
   return x / (x.norm() + kEPS);
 }
 
+#if __cplusplus >= 201703L
+using std::clamp;
+#else
 template <typename T>
-constexpr T interpolate(T x0, T x1, T k) {
+T clamp(T val, T lower, T upper) {
+  return std::max(lower, std::min(val, upper));
+}
+#endif
+
+template <typename T>
+constexpr T lerp(T start, T end, T factor) {
   LLU_ASSERT_FP(T);
-  return x0 + (x1 - x0) * k;
+  factor = clamp<T>(factor, static_cast<T>(0), static_cast<T>(1));
+  return start + (end - start) * factor;
 }
 
 template <typename T>
