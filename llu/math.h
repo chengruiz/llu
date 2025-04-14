@@ -1,10 +1,10 @@
 #ifndef LLU_MATH_H_
 #define LLU_MATH_H_
 
-#include <Eigen/Core>
 #include <cmath>
 
 #include <llu/const.h>
+#include <llu/eigen.h>
 
 namespace llu {
 #ifndef M_PIf
@@ -73,6 +73,9 @@ constexpr T angleDiff(T a1, T a2) {
   }
   return diff;
 }
+
+inline ArrXf sigmoid(cArrXf val) { return 1 / (1 + (-val).exp()); }
+inline ArrXd sigmoid(cArrXd val) { return 1 / (1 + (-val).exp()); }
 }  // namespace llu
 
 #endif  // LLU_MATH_H_
