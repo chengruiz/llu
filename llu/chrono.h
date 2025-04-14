@@ -4,6 +4,8 @@
 #include <chrono>
 #include <thread>
 
+#include <llu/math.h>
+
 namespace llu {
 using Clock     = std::chrono::high_resolution_clock;
 using TimePoint = Clock::time_point;
@@ -82,6 +84,64 @@ class TimerContext {
  private:
   Timer &timer_;
 };
+
+template <typename Unit = USec>
+class IntervalStats {
+ public:
+  explicit IntervalStats() = default;
+  std::size_t count() const { return count_; }
+  void clear();
+  void tick();
+  std::string infoStr();
+
+ private:
+  using Rep = typename Unit::rep;
+
+  bool first_{true};
+  TimePoint last_time_;
+  Rep max_{}, min_{};
+  double mean_{}, var_{};
+  std::size_t count_{};
+};
+
+template <typename Unit>
+void IntervalStats<Unit>::clear() {
+  count_ = 0;
+  mean_  = 0.;
+  var_   = 0.;
+  max_   = 0;
+  min_   = std::numeric_limits<Rep>::max();
+}
+
+template <typename Unit>
+void IntervalStats<Unit>::tick() {
+  auto now = Clock::now();
+  if (first_) {
+    last_time_ = now;
+    max_       = 0;
+    min_       = std::numeric_limits<Rep>::max();
+    first_     = false;
+    return;
+  }
+
+  auto duration = duration_cast<Unit>(now - last_time_).count();
+  last_time_    = now;
+  max_          = std::max(max_, duration);
+  min_          = std::min(min_, duration);
+
+  double w0 = static_cast<double>(count_) / (count_ + 1);
+  double w1 = 1. / (count_ + 1);
+
+  mean_ = mean_ * w0 + static_cast<double>(duration) * w1;
+  var_  = var_ * w0 + square(mean_ - static_cast<double>(duration)) * w0 * w1;
+  count_ += 1;
+}
+
+template <typename Unit>
+std::string IntervalStats<Unit>::infoStr() {
+  return fmt::format("mean = {}, stddev = {}, max = {}, min = {}.", Unit(static_cast<Rep>(mean_)),
+                     Unit(static_cast<Rep>(std::sqrt(var_ + 1e-8))), Unit(max_), Unit(min_));
+}
 }  // namespace llu
 
 #endif  // LLU_CHRONO_H_
