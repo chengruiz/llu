@@ -1,6 +1,6 @@
 # LLU
 
-My own utility library.
+A header-only utility library for self usage.
 
 ## Setup
 
