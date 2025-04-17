@@ -4,6 +4,8 @@
 #include <chrono>
 #include <thread>
 
+#include <fmt/core.h>
+
 #include <llu/math.h>
 
 namespace llu {
