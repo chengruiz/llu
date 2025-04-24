@@ -18,5 +18,5 @@ TEST(LLU_ENV_TEST, LLU_ENV_TEST) {
   try {
     llu::getenv("HOME", int_val);
     ASSERT_TRUE(false) << "Expected an exception";
-  } catch (const std::runtime_error &e) {}
+  } catch (const std::exception &e) {}
 }

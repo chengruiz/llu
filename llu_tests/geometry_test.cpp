@@ -24,11 +24,11 @@ void testQuat(Eigen::Quaterniond q0, llu::Quatd q1) {
 }
 
 TEST(LLU_GEOMETRY_TEST, LLU_QUATERNION_TEST) {
-  auto q00 = Eigen::Quaterniond(0.1, 0.2, 0.3, 0.4);
+  auto q00 = Eigen::Quaterniond(0.1, 0.2, 0.3, 0.4).normalized();
   llu::Quatd q01 = llu::Quatd(0.1, 0.2, 0.3, 0.4);
   testQuat(q00, q01);
 
-  auto q10 = Eigen::Quaterniond(-0.1, 0.2, -0.3, 0.4);
+  auto q10 = Eigen::Quaterniond(-0.1, 0.2, -0.3, 0.4).normalized();
   llu::Quatd q11 = llu::Quatd(-0.1, 0.2, -0.3, 0.4);
   testQuat(q10, q11);
 

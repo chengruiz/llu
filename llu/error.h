@@ -1,7 +1,7 @@
 #ifndef LLU_ERROR_H_
 #define LLU_ERROR_H_
 
-#include <exception>
+#include <stdexcept>
 
 #include <fmt/chrono.h>
 #include <fmt/core.h>

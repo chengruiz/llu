@@ -1,6 +1,8 @@
 #ifndef LLU_GEOMETRY_H_
 #define LLU_GEOMETRY_H_
 
+#include <cmath>
+#include <array>
 #include <Eigen/Dense>
 
 #include <llu/eigen.h>
@@ -20,8 +22,8 @@ class Quaternion {
   Quaternion(const Quaternion &q) : data_(q.data_) {}
   Quaternion(T w, T x, T y, T z) : data_{w, x, y, z} { normalize(); }
   explicit Quaternion(const std::array<T, 4> &data) : data_(data) { normalize(); }
-  explicit Quaternion(cVec4T q) : data_{q[0], q[1], q[2], q[3]} {}
-  explicit Quaternion(const Eigen::Quaternion<T> &q) : data_{q.w(), q.x(), q.y(), q.z()} {}
+  explicit Quaternion(cVec4T q) : Quaternion{q[0], q[1], q[2], q[3]} {}
+  explicit Quaternion(const Eigen::Quaternion<T> &q) : Quaternion{q.w(), q.x(), q.y(), q.z()} {}
   static Quaternion fromMatrix(cMat3T mat);
   static Quaternion fromRoll(T roll) { return {std::cos(roll / 2), std::sin(roll / 2), 0., 0.}; }
   static Quaternion fromPitch(T pitch) { return {std::cos(pitch / 2), 0., std::sin(pitch / 2), 0.}; }
@@ -31,10 +33,10 @@ class Quaternion {
   static Quaternion fromEulerAngles(T roll, T pitch, T yaw) { return fromYaw(yaw) * fromPitch(pitch) * fromRoll(roll); }
 
   void setIdentity() { data_ = {1., 0., 0., 0.}; }
-  [[nodiscard]] T w() const { return data_[0]; }
-  [[nodiscard]] T x() const { return data_[1]; }
-  [[nodiscard]] T y() const { return data_[2]; }
-  [[nodiscard]] T z() const { return data_[3]; }
+  [[nodiscard]] constexpr T w() const { return data_[0]; }
+  [[nodiscard]] constexpr T x() const { return data_[1]; }
+  [[nodiscard]] constexpr T y() const { return data_[2]; }
+  [[nodiscard]] constexpr T z() const { return data_[3]; }
   [[nodiscard]] Vec4T coeffs() const { return {w(), x(), y(), z()}; }
   [[nodiscard]] Quaternion inverse() const { return {w(), -x(), -y(), -z()}; }
   [[nodiscard]] Mat3T matrix() const;
@@ -53,8 +55,8 @@ class Quaternion {
 
   Quaternion operator*(T coef) const { return {w() * coef, x() * coef, y() * coef, z() * coef}; }
   Quaternion &operator*=(T coef);
-  Quaternion operator/(double coef) const { return operator*(1 / coef); }
-  Quaternion &operator/=(double coef) { return operator*=(1 / coef); }
+  Quaternion operator/(T coef) const { return operator*(1 / coef); }
+  Quaternion &operator/=(T coef) { return operator*=(1 / coef); }
 };
 
 using Quatf = Quaternion<float>;

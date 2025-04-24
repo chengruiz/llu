@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <string>
 
-#include <llu/error.h>
+#include <fmt/core.h>
 
 namespace llu {
 inline bool getenv(const char *name, std::string &result) {
@@ -19,7 +19,10 @@ inline bool getenv(const char *name, long &result) {
   if (var == nullptr) return false;
   char *end{nullptr};
   long value = std::strtol(var, &end, 10);
-  LLU_ASSERT(*end == '\0', "Environment Variable '{}' ({}) cannot be converted to a integer.", name, var);
+  if (*end != '\0') {
+    throw std::invalid_argument(
+        fmt::format("Environment Variable '{}' ({}) cannot be converted to a integer.", name, var));
+  }
 
   result = value;
   return true;

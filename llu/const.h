@@ -2,6 +2,7 @@
 #define LLU_CONST_H_
 
 namespace llu {
+// https://en.wikipedia.org/wiki/ANSI_escape_code
 constexpr const char *kClear     = "\033[0m";
 constexpr const char *kBold      = "\033[1m";
 constexpr const char *kDim       = "\033[2m";

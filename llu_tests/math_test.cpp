@@ -44,11 +44,11 @@ TEST(LLU_MATH_TEST, LLU_MATH_TEST) {
   ASSERT_TRUE(llu::unit(v1 + v2 + v3).isApprox(
     llu::Vec3d{std::sqrt(1. / 3.), std::sqrt(1. / 3.), std::sqrt(1. / 3.)}, 1e-6));
 
-  ASSERT_NEAR(llu::interpolate(-1., 1., 0.), -1., llu::kEPS) << "Interpolate(-1, 1, 0) should be -1";
-  ASSERT_NEAR(llu::interpolate(-1., 1., 0.25), -0.5, llu::kEPS) << "Interpolate(-1, 1, 0.25) should be -0.5";
-  ASSERT_NEAR(llu::interpolate(-1., 1., 0.5), 0., llu::kEPS) << "Interpolate(-1, 1, 0.5) should be 0";
-  ASSERT_NEAR(llu::interpolate(-1., 1., 0.75), 0.5, llu::kEPS) << "Interpolate(-1, 1, 0.75) should be 0.5";
-  ASSERT_NEAR(llu::interpolate(-1., 1., 1.), 1., llu::kEPS) << "Interpolate(-1, 1, 1) should be 1";
+  ASSERT_NEAR(llu::lerp(-1., 1., 0.), -1., llu::kEPS) << "Lerp(-1, 1, 0) should be -1";
+  ASSERT_NEAR(llu::lerp(-1., 1., 0.25), -0.5, llu::kEPS) << "Lerp(-1, 1, 0.25) should be -0.5";
+  ASSERT_NEAR(llu::lerp(-1., 1., 0.5), 0., llu::kEPS) << "Lerp(-1, 1, 0.5) should be 0";
+  ASSERT_NEAR(llu::lerp(-1., 1., 0.75), 0.5, llu::kEPS) << "Lerp(-1, 1, 0.75) should be 0.5";
+  ASSERT_NEAR(llu::lerp(-1., 1., 1.), 1., llu::kEPS) << "Lerp(-1, 1, 1) should be 1";
 
   ASSERT_EQ(llu::ceilDiv(0, 3), 0) << "CeilDiv(0, 3) should be 0";
   ASSERT_EQ(llu::ceilDiv(1, 3), 1) << "CeilDiv(1, 3) should be 1";

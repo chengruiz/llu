@@ -26,7 +26,7 @@ constexpr T clamp(T val, const range_t<T> &range) {
 
 template <typename T>
 constexpr T lerp(range_t<T> range, T factor) {
-  return interpolate(range.lower(), range.upper(), factor);
+  return lerp(range.lower(), range.upper(), factor);
 }
 }  // namespace llu
 

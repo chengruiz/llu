@@ -2,7 +2,7 @@
 #define LLU_SQUEUE_H_
 
 #include <cstdint>
-#include <exception>
+#include <stdexcept>
 #include <vector>
 
 namespace llu {
@@ -28,7 +28,7 @@ class StaticQueue {
   [[nodiscard]] const T &back()  const { assert_not_empty(); return data_[(front_ + size_ - 1) % capacity_]; }
   [[nodiscard]] T       &at(int64_t idx)       { return data_[get_index(idx)]; }
   [[nodiscard]] const T &at(int64_t idx) const { return data_[get_index(idx)]; }
-  [[nodiscard]] const T &get(int64_t idx, const T &default_value) const;
+  [[nodiscard]] T        get(int64_t idx, const T &default_value) const;
   [[nodiscard]] const T &get_padded(int64_t idx) const;
   // clang-format on
 
@@ -36,6 +36,7 @@ class StaticQueue {
   void clear_all() noexcept {
     clear();
     data_.clear();
+    capacity_ = 0;
   }
 
   struct iterator;
@@ -46,8 +47,9 @@ class StaticQueue {
   iterator       end()         { return iterator(this, size_);       }
   const_iterator end()   const { return const_iterator(this, size_); }
 
-  struct IndexOutOfRange : std::exception { const char *what() const noexcept override { return "Queue Index Out Of Range!"; }  };
-  struct EmptyQueue      : std::exception { const char *what() const noexcept override { return "Empty Queue!"; } };
+  struct EmptyQueue      : std::exception { const char *what() const noexcept override { return "Empty queue."; } };
+  struct IndexOutOfRange : std::exception { const char *what() const noexcept override { return "Queue index out of range."; }  };
+  struct NotAllocated    : std::exception { const char *what() const noexcept override { return "Queue not allocated."; }  };
   // clang-format on
 
  private:
@@ -83,6 +85,7 @@ void StaticQueue<T>::allocate(std::size_t size) {
 template <typename T>
 template <typename... Args>
 void StaticQueue<T>::emplace_back(Args &&...args) {
+  if (capacity_ == 0) throw NotAllocated();
   if (is_full()) {
     front_ = (front_ + 1) % capacity_;
   } else {
@@ -92,7 +95,7 @@ void StaticQueue<T>::emplace_back(Args &&...args) {
 }
 
 template <typename T>
-const T &StaticQueue<T>::get(int64_t idx, const T &default_value) const {
+T StaticQueue<T>::get(int64_t idx, const T &default_value) const {
   if (idx < 0) idx += size_;
   if (idx < 0 or idx >= size_) return default_value;
   return data_[(front_ + idx) % capacity_];
