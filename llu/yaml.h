@@ -1,14 +1,18 @@
 #ifndef LLU_YAML_H_
 #define LLU_YAML_H_
 
-#include <fmt/ostream.h>
-#include <fmt/ranges.h>
-#include <yaml-cpp/yaml.h>
-#include <Eigen/Core>
+#include <array>
+#include <stdexcept>
+#include <vector>
 
 #if __cplusplus >= 201703L
 #include <optional>
 #endif
+
+#include <fmt/ostream.h>
+#include <fmt/ranges.h>
+#include <yaml-cpp/yaml.h>
+#include <Eigen/Core>
 
 #include <llu/error.h>
 #include <llu/range.h>
@@ -18,8 +22,6 @@
 template <>
 struct fmt::formatter<YAML::Node> : ostream_formatter {};
 #endif
-
-#define LLU_BAD_YAML(node, type) LLU_ERROR("Bad conversion of Node '{}' to type '{}'.", node, ::llu::getTypeName(type))
 
 /**
  * @brief This namespace contains utility functions for working with YAML.
@@ -40,7 +42,7 @@ bool isType(const Node &node) {
   try {
     node.as<T>();
     return true;
-  } catch (...) {
+  } catch (const YAML::Exception &) {
     return false;
   }
 }
@@ -81,13 +83,19 @@ void assertNTuple(const Node &node, const Key &key, std::size_t size) {
   LLU_ASSERT(isNTuple(node[key], size), "Value of key '{}' requires to be a {}-tuple for node '{}'.", key, size, node);
 }
 
+struct BadConversionError : std::runtime_error {
+  template <typename T>
+  BadConversionError(const YAML::Node &node, const T &value)
+      : std::runtime_error(fmt::format("Bad conversion from Node '{}' to type '{}'.", node, getTypeName(value))) {}
+};
+
 namespace impl {
 template <typename Value>
 void setTo(const Node &node, Value &value) {
   try {
     value = node.as<Value>();
-  } catch (const std::runtime_error &) {  // Gives a more detailed information
-    LLU_BAD_YAML(node, value);
+  } catch (const YAML::Exception &) {  // Gives detailed information
+    throw BadConversionError(node, value);
   }
 }
 
@@ -154,13 +162,15 @@ void setTo(const Node &node, range_t<dtype> &value) {
     setTo(node, value.lower());
     value.upper() = value.lower();
   } else if (node.IsMap()) {
+    assertValid(node, "lower");
+    assertValid(node, "upper");
     setTo(node["lower"], value.lower());
     setTo(node["upper"], value.upper());
   } else if (isNTuple(node, 2)) {
     setTo(node[0], value.lower());
     setTo(node[1], value.upper());
   } else {
-    LLU_BAD_YAML(node, value);
+    throw BadConversionError(node, value);
   }
 }
 
@@ -261,7 +271,5 @@ Value readIf(const Node &node, const Key &key, const Value &default_value) {
 }
 }  // namespace yml
 }  // namespace llu
-
-#undef LLU_BAD_YAML
 
 #endif  // LLU_YAML_H_
