@@ -20,7 +20,7 @@
 
 #if FMT_VERSION >= 90000
 template <>
-struct fmt::formatter<YAML::Node> : ostream_formatter {};
+struct fmt::formatter<YAML::Node> : fmt::ostream_formatter {};
 #endif
 
 /**
