@@ -21,7 +21,7 @@ endif ()
 
 if (LLU_BUILD_TESTS)
     enable_testing()
-    find_package(GTest CONFIG REQUIRED)
+    find_package(GTest REQUIRED)
     function(llu_add_test name)
         add_executable(llu_${name} llu_tests/${name}.cpp)
         target_link_libraries(llu_${name} llu GTest::gtest GTest::gtest_main)
