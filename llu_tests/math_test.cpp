@@ -4,7 +4,7 @@
 #include <llu/math.h>
 
 TEST(LLU_MATH_TEST, LLU_MATH_TEST) {
-  ASSERT_NEAR(llu::M_PIf, M_PI, 1e-7) << "M_PIf should be equal to M_PI";
+  ASSERT_NEAR(M_PIf, M_PI, 1e-7) << "M_PIf should be equal to M_PI";
 
   ASSERT_EQ(llu::square(0), 0) << "Square(0) should be 0";
   ASSERT_EQ(llu::square(2), 4) << "Square(2) should be 4";

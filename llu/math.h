@@ -7,11 +7,11 @@
 #include <llu/eigen.h>
 #include <llu/macro.h>
 
-namespace llu {
 #ifndef M_PIf
 constexpr float M_PIf = static_cast<float>(M_PI);
 #endif  // M_PIf
 
+namespace llu {
 template <typename T>
 constexpr T square(T x) {
   return x * x;
