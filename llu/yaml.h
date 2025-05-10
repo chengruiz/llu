@@ -99,6 +99,12 @@ void setTo(const Node &node, Value &value) {
   }
 }
 
+inline void setTo(const Node &node, std::vector<bool>::reference value) {
+  bool scalar;
+  setTo(node, scalar);
+  value = scalar;
+}
+
 template <typename T>
 void setTo(const Node &node, std::vector<T> &value);
 template <typename T, std::size_t N>

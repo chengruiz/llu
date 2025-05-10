@@ -3,7 +3,6 @@
 #include <llu/eigen.h>
 #include <llu/yaml.h>
 
-
 TEST(LLU_YAML_TEST, LLU_TYPE_TEST) {
   YAML::Node node = YAML::Load("{a: 1, b: [1, 2, 3], c: 2.5, d: false}");
   ASSERT_TRUE(llu::yml::isType<int>(node["a"])) << "Expected a int";
@@ -64,11 +63,11 @@ TEST(LLU_YAML_TEST, LLU_READ_TEST) {
   ASSERT_EQ(c, 2.5) << "Expected c = 2.5";
   ASSERT_TRUE(d) << "Expected d = true";
 
-  a = {};
+  a  = {};
   b1 = {};
   b2 = {};
-  c = {};
-  d = {};
+  c  = {};
+  d  = {};
   llu::yml::setTo(node, "a", a);
   llu::yml::setTo(node, "b", b1);
   llu::yml::setTo(node, "b", b2);
@@ -82,11 +81,11 @@ TEST(LLU_YAML_TEST, LLU_READ_TEST) {
   ASSERT_EQ(c, 2.5) << "Expected c = 2.5";
   ASSERT_TRUE(d) << "Expected d = true";
 
-  a = {};
+  a  = {};
   b1 = {};
   b2 = {};
-  c = {};
-  d = {};
+  c  = {};
+  d  = {};
   llu::yml::setIf(node["a"], a);
   llu::yml::setIf(node["b"], b1);
   llu::yml::setIf(node["b"], b2);
@@ -100,11 +99,11 @@ TEST(LLU_YAML_TEST, LLU_READ_TEST) {
   ASSERT_EQ(c, 2.5) << "Expected c = 2.5";
   ASSERT_TRUE(d) << "Expected d = true";
 
-  a = {};
+  a  = {};
   b1 = {};
   b2 = {};
-  c = {};
-  d = {};
+  c  = {};
+  d  = {};
   llu::yml::setIf(node, "a", a);
   llu::yml::setIf(node, "b", b1);
   llu::yml::setIf(node, "b", b2);
@@ -172,12 +171,13 @@ TEST(LLU_YAML_TEST, LLU_READ_TEST3) {
 }
 
 TEST(LLU_YAML_TEST, LLU_READ_TEST4) {
-  YAML::Node node = YAML::Load("{a: 1, b: [1, 2, 3], c: 2.5, d: true}");
+  YAML::Node node = YAML::Load("{a: 1, b: [1, 2, 3], c: 2.5, d: true, e: [true, false, true, off, on]}");
   int a{};
   std::array<int, 4> b1{};
   llu::Vec4d b2;
   std::vector<int> b3(2);
   llu::VecXd b4;
+  std::vector<bool> e;
 
   try {
     llu::yml::setTo(node, "not_a_key", a);
@@ -211,8 +211,16 @@ TEST(LLU_YAML_TEST, LLU_READ_TEST4) {
   b4.resize(3);
   llu::yml::setTo(node, "b", b4);
 
+  llu::yml::setTo(node, "e", e);
+  ASSERT_EQ(e.size(), 5) << "Expected e.size() = 5";
+  ASSERT_TRUE(e[0]) << "Expected e[0] = true";
+  ASSERT_FALSE(e[1]) << "Expected e[1] = true";
+  ASSERT_TRUE(e[2]) << "Expected e[2] = true";
+  ASSERT_FALSE(e[3]) << "Expected e[3] = false";
+  ASSERT_TRUE(e[4]) << "Expected e[4] = true";
+
   try {
-    llu::yml::getItem(node, "e");
+    llu::yml::getItem(node, "not_a_key");
     ASSERT_TRUE(false) << "Expected an exception";
   } catch (const std::runtime_error &e) {}
 }
