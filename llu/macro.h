@@ -10,11 +10,13 @@
 
 #define LLU_FILELINE() "[" __FILE_NAME__ ":" LLU_TO_STR(__LINE__) "]"
 
-#if __cplusplus >= 201703L
 #include <type_traits>
-#define LLU_ASSERT_FP(T) static_assert(std::is_floating_point_v<T>)
+#if __cplusplus >= 201703L
+#define LLU_ASSERT_FP(T)  static_assert(std::is_floating_point_v<T>)
+#define LLU_ASSERT_INT(T) static_assert(std::is_integral<T>())
 #else
-#define LLU_ASSERT_FP(T)
+#define LLU_ASSERT_FP(T)  static_assert(true, "LLU_ASSERT_FP failed.")
+#define LLU_ASSERT_INT(T) static_assert(std::is_integral<T>(), "LLU_ASSERT_INT failed.")
 #endif
 
 #endif  // LLU_MACRO_H_

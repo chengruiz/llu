@@ -60,13 +60,13 @@ constexpr T lerp(T start, T end, T factor) {
 
 template <typename T>
 constexpr T ceilDiv(T x, T y) {
-  static_assert(std::is_integral<T>());
+  LLU_ASSERT_INT(T);
   return (x + y - 1) / y;
 }
 
 template <typename T>
 constexpr T pMod(T dividend, T divisor) {  // positive mod, divisor must be positive
-  static_assert(std::is_integral<T>());
+  LLU_ASSERT_INT(T);
   return (dividend % divisor + divisor) % divisor;
 }
 
