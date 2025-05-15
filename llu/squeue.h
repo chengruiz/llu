@@ -2,7 +2,7 @@
 #define LLU_SQUEUE_H_
 
 #include <cstdint>
-#include <stdexcept>
+#include <exception>
 #include <vector>
 
 namespace llu {
@@ -47,9 +47,9 @@ class StaticQueue {
   iterator       end()         { return iterator(this, size_);       }
   const_iterator end()   const { return const_iterator(this, size_); }
 
-  struct EmptyQueue      : std::exception { const char *what() const noexcept override { return "Empty queue."; } };
-  struct IndexOutOfRange : std::exception { const char *what() const noexcept override { return "Queue index out of range."; }  };
-  struct NotAllocated    : std::exception { const char *what() const noexcept override { return "Queue not allocated."; }  };
+  struct EmptyQueue final      : std::exception { const char *what() const noexcept override { return "Empty queue."; } };
+  struct IndexOutOfRange final : std::exception { const char *what() const noexcept override { return "Queue index out of range."; }  };
+  struct NotAllocated final    : std::exception { const char *what() const noexcept override { return "Queue not allocated."; }  };
   // clang-format on
 
  private:
@@ -97,7 +97,7 @@ void StaticQueue<T>::emplace_back(Args &&...args) {
 template <typename T>
 T StaticQueue<T>::get(int64_t idx, const T &default_value) const {
   if (idx < 0) idx += size_;
-  if (idx < 0 or idx >= size_) return default_value;
+  if (idx < 0 or static_cast<std::size_t>(idx) >= size_) return default_value;
   return data_[(front_ + idx) % capacity_];
 }
 
@@ -112,7 +112,7 @@ const T &StaticQueue<T>::get_padded(int64_t idx) const {
 template <typename T>
 int64_t StaticQueue<T>::get_index(int64_t idx) const {
   if (idx < 0) idx += size_;
-  if (idx < 0 or idx >= size_) throw IndexOutOfRange();
+  if (idx < 0 or static_cast<std::size_t>(idx) >= size_) throw IndexOutOfRange();
   return (front_ + idx) % capacity_;
 }
 
