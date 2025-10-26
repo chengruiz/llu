@@ -30,6 +30,22 @@ namespace llu {
 namespace yml {
 using Node = YAML::Node;
 
+inline Node loadFile(const std::string &filename) {
+  try {
+    return YAML::LoadFile(filename);
+  } catch (const YAML::BadFile &e) {
+    throw std::runtime_error(fmt::format("Failed to load YAML file '{}' ({}).", filename, e.what()));
+  }
+}
+
+inline Node loadFileIf(const std::string &filename) {
+  try {
+    return YAML::LoadFile(filename);
+  } catch (const YAML::BadFile &e) {
+    return {};
+  }
+}
+
 /**
  * @brief Checks if a YAML node can be converted to a given type.
  *
@@ -49,9 +65,7 @@ bool isType(const Node &node) {
 
 inline bool isBool(const Node &node) { return isType<bool>(node); }
 inline bool isFloat(const Node &node) { return isType<double>(node); }
-
 inline bool isNTuple(const Node &node, std::size_t size) { return node.IsSequence() and node.size() == size; }
-
 inline bool isValid(const Node &node) { return static_cast<bool>(node); }
 
 template <typename Key>
