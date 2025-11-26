@@ -1,6 +1,8 @@
 #ifndef LLU_EIGEN_H_
 #define LLU_EIGEN_H_
 
+#include <vector>
+
 #include <Eigen/Core>
 
 #define LLU_EIGEN_ALIAS(alias, ...)          \
@@ -52,6 +54,16 @@ LLU_EIGEN_ALIAS(Mat2d, Eigen::Matrix2d);
 LLU_EIGEN_ALIAS(Mat3d, Eigen::Matrix3d);
 LLU_EIGEN_ALIAS(Mat4d, Eigen::Matrix4d);
 LLU_EIGEN_ALIAS(MatXd, Eigen::MatrixXd);
+
+template <typename T>
+std::vector<Eigen::Index> getNonFiniteIndices(const Eigen::Ref<const Eigen::Array<T, -1, 1>> &arr) {
+  std::vector<Eigen::Index> non_finite_indices;
+  auto is_finite = arr.isFinite();
+  for (Eigen::Index idx{}; idx < is_finite.size(); ++idx) {
+    if (not is_finite[idx]) non_finite_indices.push_back(idx);
+  }
+  return non_finite_indices;
+}
 }  // namespace llu
 
 #endif  // LLU_EIGEN_H_

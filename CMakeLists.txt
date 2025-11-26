@@ -29,6 +29,7 @@ if (LLU_BUILD_TESTS)
     endfunction()
 
     llu_add_test(chrono_test)
+    llu_add_test(eigen_test)
     llu_add_test(env_test)
     llu_add_test(error_test)
     llu_add_test(geometry_test)
