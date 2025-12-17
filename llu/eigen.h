@@ -55,12 +55,11 @@ LLU_EIGEN_ALIAS(Mat3d, Eigen::Matrix3d);
 LLU_EIGEN_ALIAS(Mat4d, Eigen::Matrix4d);
 LLU_EIGEN_ALIAS(MatXd, Eigen::MatrixXd);
 
-template <typename T>
-std::vector<Eigen::Index> getNonFiniteIndices(const Eigen::Ref<const Eigen::Array<T, -1, 1>> &arr) {
+template <typename Derived>
+std::vector<Eigen::Index> getNonFiniteIndices(const Eigen::DenseBase<Derived> &data) {
   std::vector<Eigen::Index> non_finite_indices;
-  auto is_finite = arr.isFinite();
-  for (Eigen::Index idx{}; idx < is_finite.size(); ++idx) {
-    if (not is_finite[idx]) non_finite_indices.push_back(idx);
+  for (Eigen::Index index{}; index < data.size(); ++index) {
+    if (not std::isfinite(data(index))) non_finite_indices.push_back(index);
   }
   return non_finite_indices;
 }
