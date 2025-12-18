@@ -30,11 +30,19 @@ namespace llu {
 namespace yml {
 using Node = YAML::Node;
 
+inline std::string formatNode(const Node &node) {
+  std::string node_str = fmt::format("{}", node);
+  if (node_str.find('\n') != std::string::npos) {
+    node_str = fmt::format("''\n{}\n''", node_str);
+  }
+  return node_str;
+}
+
 inline Node loadFile(const std::string &filename) {
   try {
     return YAML::LoadFile(filename);
-  } catch (const YAML::BadFile &e) {
-    throw std::runtime_error(fmt::format("Failed to load YAML file '{}' ({}).", filename, e.what()));
+  } catch (const YAML::BadFile &error) {
+    throw std::runtime_error(fmt::format("Failed to load YAML file '{}' ({}).", filename, error.what()));
   }
 }
 
@@ -83,7 +91,7 @@ inline void assertValid(const Node &node) { LLU_ASSERT(node, "Invalid node."); }
 template <typename Key>
 void assertValid(const Node &node, const Key &key) {
   assertValid(node);
-  LLU_ASSERT(node[key], "Missing Key '{}' for node '{}'.", key, node);
+  LLU_ASSERT(node[key], "Missing Key '{}' for node '{}'.", key, formatNode(node));
 }
 
 inline void assertNTuple(const Node &node, std::size_t size) {
@@ -94,13 +102,15 @@ inline void assertNTuple(const Node &node, std::size_t size) {
 template <typename Key>
 void assertNTuple(const Node &node, const Key &key, std::size_t size) {
   assertValid(node, key);
-  LLU_ASSERT(isNTuple(node[key], size), "Value of key '{}' requires to be a {}-tuple for node '{}'.", key, size, node);
+  LLU_ASSERT(isNTuple(node[key], size), "Value of key '{}' requires to be a {}-tuple for node '{}'.", key, size,
+             formatNode(node));
 }
 
 struct BadConversionError : std::runtime_error {
   template <typename T>
   BadConversionError(const YAML::Node &node, const T &value)
-      : std::runtime_error(fmt::format("Bad conversion from Node '{}' to type '{}'.", node, getTypeName(value))) {}
+      : std::runtime_error(
+            fmt::format("Bad conversion from node '{}' to type '{}'.", formatNode(node), getTypeName(value))) {}
 };
 
 namespace impl {
@@ -155,7 +165,7 @@ void setTo(const Node &node, std::vector<T> &value) {
     }
     return;
   }
-  LLU_ASSERT_EQ(node.size(), value.size(), "Size mismatch between node '{}' and value '{}'.", node, value);
+  LLU_ASSERT_EQ(node.size(), value.size(), "Size mismatch between node '{}' and value '{}'.", formatNode(node), value);
   for (std::size_t i{}; i < node.size(); ++i) {
     setTo(node[i], value[i]);
   }
@@ -163,7 +173,7 @@ void setTo(const Node &node, std::vector<T> &value) {
 
 template <typename T, std::size_t N>
 void setTo(const Node &node, std::array<T, N> &value) {
-  static_assert(N != 0, "setTo: Invalid array size 0.");
+  static_assert(N != 0, "setTo: Invalid array size (0).");
   if (node.IsScalar()) {
     T scalar;
     setTo(node, scalar);
