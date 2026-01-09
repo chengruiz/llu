@@ -31,7 +31,13 @@ namespace yml {
 using Node = YAML::Node;
 
 inline std::string formatNode(const Node &node) {
+#if FMT_VERSION < 90000
+  std::stringstream ss;
+  ss << node;
+  std::string node_str = ss.str();
+#else
   std::string node_str = fmt::format("{}", node);
+#endif
   if (node_str.find('\n') != std::string::npos) {
     node_str = fmt::format("''\n{}\n''", node_str);
   }
