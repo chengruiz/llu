@@ -9,30 +9,36 @@
 #include <llu/math.h>
 
 namespace llu {
-using Clock     = std::chrono::high_resolution_clock;
-using TimePoint = Clock::time_point;
-using Duration  = Clock::duration;
+using SteadyClock = std::chrono::steady_clock;
+using TimePoint   = SteadyClock::time_point;
+using Duration    = SteadyClock::duration;
 
 using MSec = std::chrono::milliseconds;
 using USec = std::chrono::microseconds;
 using NSec = std::chrono::nanoseconds;
-using std::chrono::duration_cast;
 
 template <typename Unit>
-typename Unit::rep timePassed(const TimePoint &start) {
-  return duration_cast<Unit>(Clock::now() - start).count();
+typename Unit::rep getElapsedTime(const TimePoint &start) {
+  return std::chrono::duration_cast<Unit>(SteadyClock::now() - start).count();
 }
 
 class Rate {
  public:
-  explicit Rate(std::size_t freq) : cycle_(static_cast<std::size_t>(1e9) / freq), event_time_(Clock::now()) {}
+  explicit Rate(std::size_t freq) {
+    if (freq == 0) {
+      throw std::invalid_argument("Frequency must be greater than zero.");
+    }
+    cycle_      = NSec(1'000'000'000 / freq);
+    event_time_ = SteadyClock::now();
+  }
 
   void sleep() {
     event_time_ += cycle_;
-    while (Clock::now() < event_time_ - USec(50)) {
-      std::this_thread::sleep_for(USec(50));
+    while (SteadyClock::now() < event_time_ - USec(100)) {
+      std::this_thread::sleep_for(USec(100));
     }
-    while (Clock::now() < event_time_);
+    // Spin for precision
+    while (SteadyClock::now() < event_time_);
   }
 
  private:
@@ -42,10 +48,10 @@ class Rate {
 
 class Timer {
  public:
-  void start() { start_ = Clock::now(); }
+  void start() { start_ = SteadyClock::now(); }
 
   void stop() {
-    stop_ = Clock::now();
+    stop_ = SteadyClock::now();
     count_ += 1;
     duration_ += stop_ - start_;
   }
@@ -57,19 +63,15 @@ class Timer {
 
   [[nodiscard]] std::size_t count() const { return count_; }
   [[nodiscard]] Duration total() const { return duration_; }
-
-  [[nodiscard]] Duration mean() const {
-    if (count_ == 0) return Duration{0};
-    return duration_ / count_;
-  }
+  [[nodiscard]] Duration mean() const { return count_ == 0 ? Duration(0) : Duration(duration_ / count_); }
 
   template <typename T>
   [[nodiscard]] T total() {
-    return duration_cast<T>(total());
+    return std::chrono::duration_cast<T>(total());
   }
   template <typename T>
   [[nodiscard]] T mean() {
-    return duration_cast<T>(mean());
+    return std::chrono::duration_cast<T>(mean());
   }
 
  private:
@@ -117,7 +119,7 @@ void IntervalStats<Unit>::clear() {
 
 template <typename Unit>
 void IntervalStats<Unit>::tick() {
-  auto now = Clock::now();
+  auto now = SteadyClock::now();
   if (first_) {
     last_time_ = now;
     max_       = 0;
@@ -126,7 +128,7 @@ void IntervalStats<Unit>::tick() {
     return;
   }
 
-  auto duration = duration_cast<Unit>(now - last_time_).count();
+  auto duration = std::chrono::duration_cast<Unit>(now - last_time_).count();
   last_time_    = now;
   max_          = std::max(max_, duration);
   min_          = std::min(min_, duration);
