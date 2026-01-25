@@ -18,8 +18,8 @@ using USec = std::chrono::microseconds;
 using NSec = std::chrono::nanoseconds;
 
 template <typename Unit>
-typename Unit::rep getElapsedTime(const TimePoint &start) {
-  return std::chrono::duration_cast<Unit>(SteadyClock::now() - start).count();
+typename Unit::rep getElapsedTime(const TimePoint &start_time) {
+  return std::chrono::duration_cast<Unit>(SteadyClock::now() - start_time).count();
 }
 
 class Rate {
