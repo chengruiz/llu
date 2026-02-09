@@ -16,6 +16,7 @@ class RingBuffer {
   RingBuffer() = default;
   explicit RingBuffer(std::size_t capacity) : data_(capacity), capacity_(capacity) {}
   void allocate(std::size_t size);
+  void fill(const T &value);
 
   [[nodiscard]] std::size_t capacity() const noexcept { return capacity_; }
   [[nodiscard]] bool empty() const noexcept { return size_ == 0; }
@@ -101,6 +102,14 @@ void RingBuffer<T>::allocate(std::size_t size) {
   front_    = 0;
   capacity_ = size;
   data_     = std::move(tmp);
+}
+
+template <typename T>
+void RingBuffer<T>::fill(const T &value) {
+  assertAllocated("fill");
+  std::fill(data_.begin(), data_.end(), value);
+  front_ = 0;
+  size_  = capacity_;
 }
 
 template <typename T>
