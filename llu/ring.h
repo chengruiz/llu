@@ -3,10 +3,11 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <exception>
 #include <iterator>
 #include <utility>
 #include <vector>
+
+#include <llu/exception.h>
 
 namespace llu {
 template <typename T>
@@ -30,13 +31,13 @@ class RingBuffer {
   void push_front(const T &item) { emplace_front(item); }
   template<typename...Args> void emplace_front(Args &&...args);
 
-  void pop_front() { assertNotEmpty(); front_ = (front_ + 1) % capacity_; --size_; }
-  void pop_back() { assertNotEmpty(); --size_; }
+  void pop_front() { assertNotEmpty("pop_front"); front_ = (front_ + 1) % capacity_; --size_; }
+  void pop_back() { assertNotEmpty("pop_back"); --size_; }
 
-  [[nodiscard]] T       &front()       { assertNotEmpty(); return data_[front_]; }
-  [[nodiscard]] const T &front() const { assertNotEmpty(); return data_[front_]; }
-  [[nodiscard]] T       &back()        { assertNotEmpty(); return data_[(front_ + size_ - 1) % capacity_]; }
-  [[nodiscard]] const T &back()  const { assertNotEmpty(); return data_[(front_ + size_ - 1) % capacity_]; }
+  [[nodiscard]] T       &front()       { assertNotEmpty("front"); return data_[front_]; }
+  [[nodiscard]] const T &front() const { assertNotEmpty("front"); return data_[front_]; }
+  [[nodiscard]] T       &back()        { assertNotEmpty("back"); return data_[(front_ + size_ - 1) % capacity_]; }
+  [[nodiscard]] const T &back()  const { assertNotEmpty("back"); return data_[(front_ + size_ - 1) % capacity_]; }
   [[nodiscard]] T       &at(int64_t index)       { return data_[resolveIndex(index)]; }
   [[nodiscard]] const T &at(int64_t index) const { return data_[resolveIndex(index)]; }
   [[nodiscard]] T        at(int64_t index, const T &default_value) const;
@@ -65,17 +66,15 @@ class RingBuffer {
   const_reverse_iterator rend()   const  { return const_reverse_iterator(begin()); }
   const_reverse_iterator crbegin() const { return const_reverse_iterator(cend());  }
   const_reverse_iterator crend()   const { return const_reverse_iterator(cbegin());}
-
-  struct EmptyQueue final      : std::exception { const char *what() const noexcept override { return "Empty queue."; } };
-  struct IndexOutOfRange final : std::exception { const char *what() const noexcept override { return "Queue index out of range."; }  };
-  struct NotAllocated final    : std::exception { const char *what() const noexcept override { return "Queue not allocated."; }  };
   // clang-format on
 
  private:
-  // clang-format off
-  void assertAllocated() const { if (capacity_ == 0) throw NotAllocated(); }
-  void assertNotEmpty() const { if (empty()) throw EmptyQueue(); }
-  // clang-format on
+  void assertAllocated(const char *operation) const {
+    if (capacity_ == 0) throw NotAllocatedError("RingBuffer should be allocated before operation '{}'.", operation);
+  }
+  void assertNotEmpty(const char *operation) const {
+    if (empty()) throw UnderflowError("RingBuffer should not be empty before operation '{}'.", operation);
+  }
   [[nodiscard]] int64_t resolveIndex(int64_t index) const;
 
   std::vector<T> data_{};
@@ -107,7 +106,7 @@ void RingBuffer<T>::allocate(std::size_t size) {
 template <typename T>
 template <typename... Args>
 void RingBuffer<T>::emplace_back(Args &&...args) {
-  assertAllocated();
+  assertAllocated("emplace_back");
   if (full()) {
     front_ = (front_ + 1) % capacity_;
   } else {
@@ -119,8 +118,8 @@ void RingBuffer<T>::emplace_back(Args &&...args) {
 template <typename T>
 template <typename... Args>
 void RingBuffer<T>::emplace_front(Args &&...args) {
-  assertAllocated();
-  front_ = (front_ - 1 + capacity_) % capacity_;
+  assertAllocated("emplace_front");
+  front_ = (front_ + capacity_ - 1) % capacity_;
   if (not full()) ++size_;
   data_[front_] = T(std::forward<Args>(args)...);
 }
@@ -134,9 +133,12 @@ T RingBuffer<T>::at(int64_t index, const T &default_value) const {
 
 template <typename T>
 int64_t RingBuffer<T>::resolveIndex(int64_t index) const {
-  if (index < 0) index += size_;
-  if (index < 0 or static_cast<std::size_t>(index) >= size_) throw IndexOutOfRange();
-  return (front_ + index) % capacity_;
+  std::int64_t size_i64 = static_cast<std::int64_t>(size_);
+  if (index < -size_i64 or index >= size_i64) {
+    throw IndexError("RingBuffer index {} is out of valid range [{}, {}) for size {}.", index, -size_i64, size_i64,
+                     size_);
+  }
+  return (front_ + (index < 0 ? index + size_i64 : index)) % capacity_;
 }
 
 template <typename T>
@@ -147,7 +149,7 @@ struct RingBuffer<T>::iterator {
   using pointer           = T *;
   using reference         = T &;
 
-  explicit iterator(RingBuffer *queue, std::size_t index = 0) : queue_(queue), index_(index) {}
+  explicit iterator(RingBuffer *rb, std::size_t index = 0) : rb_(rb), index_(index) {}
 
   // clang-format off
   iterator &operator++() { ++index_; return *this; }
@@ -166,7 +168,7 @@ struct RingBuffer<T>::iterator {
   }
 
   friend bool operator==(const iterator &lhs, const iterator &rhs) {
-    return lhs.index_ == rhs.index_ && lhs.queue_ == rhs.queue_;
+    return lhs.index_ == rhs.index_ && lhs.rb_ == rhs.rb_;
   }
   friend bool operator!=(const iterator &lhs, const iterator &rhs) { return !(lhs == rhs); }
   friend bool operator<(const iterator &lhs, const iterator &rhs) { return lhs.index_ < rhs.index_; }
@@ -174,14 +176,14 @@ struct RingBuffer<T>::iterator {
   friend bool operator<=(const iterator &lhs, const iterator &rhs) { return lhs.index_ <= rhs.index_; }
   friend bool operator>=(const iterator &lhs, const iterator &rhs) { return lhs.index_ >= rhs.index_; }
 
-  T &operator*() const { return (*queue_)[index_]; }
-  T *operator->() const { return &(*queue_)[index_]; }
-  T &operator[](difference_type n) const { return (*queue_)[index_ + n]; }
+  T &operator*() const { return (*rb_)[index_]; }
+  T *operator->() const { return &(*rb_)[index_]; }
+  T &operator[](difference_type n) const { return (*rb_)[index_ + n]; }
 
   friend struct const_iterator;
 
  private:
-  RingBuffer *queue_;
+  RingBuffer *rb_;
   std::size_t index_;
 };
 
@@ -193,8 +195,8 @@ struct RingBuffer<T>::const_iterator {
   using pointer           = const T *;
   using reference         = const T &;
 
-  explicit const_iterator(const RingBuffer *queue, std::size_t index = 0) : queue_(queue), index_(index) {}
-  const_iterator(const iterator &other) : queue_(other.queue_), index_(other.index_) {}
+  explicit const_iterator(const RingBuffer *rb, std::size_t index = 0) : rb_(rb), index_(index) {}
+  const_iterator(const iterator &other) : rb_(other.rb_), index_(other.index_) {}
 
   // clang-format off
   const_iterator &operator++() { ++index_; return *this; }
@@ -212,7 +214,7 @@ struct RingBuffer<T>::const_iterator {
   // clang-format on
 
   friend bool operator==(const const_iterator &lhs, const const_iterator &rhs) {
-    return lhs.index_ == rhs.index_ && lhs.queue_ == rhs.queue_;
+    return lhs.index_ == rhs.index_ && lhs.rb_ == rhs.rb_;
   }
   friend bool operator!=(const const_iterator &lhs, const const_iterator &rhs) { return !(lhs == rhs); }
   friend bool operator<(const const_iterator &lhs, const const_iterator &rhs) { return lhs.index_ < rhs.index_; }
@@ -220,12 +222,12 @@ struct RingBuffer<T>::const_iterator {
   friend bool operator<=(const const_iterator &lhs, const const_iterator &rhs) { return lhs.index_ <= rhs.index_; }
   friend bool operator>=(const const_iterator &lhs, const const_iterator &rhs) { return lhs.index_ >= rhs.index_; }
 
-  const T &operator*() const { return (*queue_)[index_]; }
-  const T *operator->() const { return &(*queue_)[index_]; }
-  const T &operator[](difference_type n) const { return (*queue_)[index_ + n]; }
+  const T &operator*() const { return (*rb_)[index_]; }
+  const T *operator->() const { return &(*rb_)[index_]; }
+  const T &operator[](difference_type n) const { return (*rb_)[index_ + n]; }
 
  private:
-  const RingBuffer *queue_;
+  const RingBuffer *rb_;
   std::size_t index_;
 };
 }  // namespace llu

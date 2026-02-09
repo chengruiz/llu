@@ -33,16 +33,16 @@ TEST(LLU_RING_TEST, LLU_RING_DATA_TEST) {
   llu::RingBuffer<int> q(3);
   try {
     auto front = q.front();
-    ASSERT_TRUE(false) << "EmptyQueue exception should be thrown";
-  } catch (llu::RingBuffer<int>::EmptyQueue &e) {}
+    ASSERT_TRUE(false) << "UnderflowError exception should be thrown";
+  } catch (llu::UnderflowError &e) {}
   try {
     auto back = q.back();
-    ASSERT_TRUE(false) << "EmptyQueue exception should be thrown";
-  } catch (llu::RingBuffer<int>::EmptyQueue &e) {}
+    ASSERT_TRUE(false) << "UnderflowError exception should be thrown";
+  } catch (llu::UnderflowError &e) {}
   try {
     auto item = q.at(0);
-    ASSERT_TRUE(false) << "IndexOutOfRange exception should be thrown";
-  } catch (llu::RingBuffer<int>::IndexOutOfRange &e) {}
+    ASSERT_TRUE(false) << "IndexError exception should be thrown";
+  } catch (llu::IndexError &e) {}
 
   q.push_back(0);
   q.push_back(1);
@@ -59,12 +59,12 @@ TEST(LLU_RING_TEST, LLU_RING_DATA_TEST) {
   ASSERT_EQ(q.at(-3), 2);
   try {
     auto item = q.at(3);
-    ASSERT_TRUE(false) << "IndexOutOfRange exception should be thrown";
-  } catch (llu::RingBuffer<int>::IndexOutOfRange &e) {}
+    ASSERT_TRUE(false) << "IndexError exception should be thrown";
+  } catch (llu::IndexError &e) {}
   try {
     auto item = q.at(-4);
-    ASSERT_TRUE(false) << "IndexOutOfRange exception should be thrown";
-  } catch (llu::RingBuffer<int>::IndexOutOfRange &e) {}
+    ASSERT_TRUE(false) << "IndexError exception should be thrown";
+  } catch (llu::IndexError &e) {}
 
   ASSERT_EQ(q.at(0, -1), 2);
   ASSERT_EQ(q.at(1, -1), 3);
