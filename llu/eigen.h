@@ -63,6 +63,17 @@ std::vector<Eigen::Index> getNonFiniteIndices(const Eigen::DenseBase<Derived> &d
   }
   return non_finite_indices;
 }
+
+template <typename T>
+void populateArray(Eigen::Array<T, -1, 1> &vec, Eigen::Index size) {
+  if (vec.size() == 0) {
+    vec.setZero(size);
+  } else if (vec.size() == 1) {
+    vec.setConstant(size, vec[0]);
+  } else {
+    LLU_ASSERT(vec.size() == size, "Size mismatch when populating array.");
+  }
+}
 }  // namespace llu
 
 #endif  // LLU_EIGEN_H_
