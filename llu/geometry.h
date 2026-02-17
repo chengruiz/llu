@@ -18,13 +18,15 @@ class Quaternion {
   static constexpr T PI = static_cast<T>(M_PI);
 
  public:
-  LLU_ASSERT_FP(T);
+  LLU_ASSERT_FLOATING_POINT(T);
   Quaternion() : data_{1., 0., 0., 0.} {}
   Quaternion(const Quaternion &q) : data_(q.data_) {}
   Quaternion(T w, T x, T y, T z) : data_{w, x, y, z} { normalize(); }
   explicit Quaternion(const std::array<T, 4> &data) : data_(data) { normalize(); }
   explicit Quaternion(cVec4t q) : Quaternion{q[0], q[1], q[2], q[3]} {}
-  explicit Quaternion(const Eigen::Quaternion<T> &q) : Quaternion{q.w(), q.x(), q.y(), q.z()} {}
+  explicit Quaternion(const Eigen::Quaternion<T> &q) : Quaternion(q.w(), q.x(), q.y(), q.z()) {}
+  Quaternion &operator=(const Quaternion &other) = default;
+  Quaternion &operator=(const Eigen::Quaternion<T> &q) { return operator=(Quaternion(q.w(), q.x(), q.y(), q.z())); }
   static Quaternion fromMatrix(cMat3t mat);
   static Quaternion fromRoll(T roll) { return {std::cos(roll / 2), std::sin(roll / 2), 0., 0.}; }
   static Quaternion fromPitch(T pitch) { return {std::cos(pitch / 2), 0., std::sin(pitch / 2), 0.}; }
@@ -66,16 +68,43 @@ using Quatd = Quaternion<double>;
 template <typename T>
 auto Quaternion<T>::fromMatrix(cMat3t mat) -> Quaternion {
   // https://en.wikipedia.org/wiki/Rotation_matrix#Quaternion
+  T trace = mat.trace();
+  if (trace > 0) {
+    T s = std::sqrt(trace + 1) * 2;
+    return {
+        static_cast<T>(0.25) * s,
+        (mat(2, 1) - mat(1, 2)) / s,
+        (mat(0, 2) - mat(2, 0)) / s,
+        (mat(1, 0) - mat(0, 1)) / s,
+    };
+  }
 
-  T t = mat.trace();
-  T r = std::sqrt(1 + t);
-  T s = 1 / (2 * r);
+  if (mat(0, 0) > mat(1, 1) and mat(0, 0) > mat(2, 2)) {
+    T s = std::sqrt(1 + mat(0, 0) - mat(1, 1) - mat(2, 2)) * 2;
+    return {
+        (mat(2, 1) - mat(1, 2)) / s,
+        static_cast<T>(0.25) * s,
+        (mat(0, 1) + mat(1, 0)) / s,
+        (mat(0, 2) + mat(2, 0)) / s,
+    };
+  }
 
+  if (mat(1, 1) > mat(2, 2)) {
+    T s = std::sqrt(1 + mat(1, 1) - mat(0, 0) - mat(2, 2)) * 2;
+    return {
+        (mat(0, 2) - mat(2, 0)) / s,
+        (mat(0, 1) + mat(1, 0)) / s,
+        static_cast<T>(0.25) * s,
+        (mat(1, 2) + mat(2, 1)) / s,
+    };
+  }
+
+  T s = std::sqrt(1 + mat(2, 2) - mat(0, 0) - mat(1, 1)) * 2;
   return {
-      r / 2,
-      (mat(2, 1) - mat(1, 2)) * s,
-      (mat(0, 2) - mat(2, 0)) * s,
-      (mat(1, 0) - mat(0, 1)) * s,
+      (mat(1, 0) - mat(0, 1)) / s,
+      (mat(0, 2) + mat(2, 0)) / s,
+      (mat(1, 2) + mat(2, 1)) / s,
+      static_cast<T>(0.25) * s,
   };
 }
 

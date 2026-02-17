@@ -24,13 +24,13 @@ constexpr T median(T a, T b, T c) {
 
 template <typename T>
 constexpr T deg2rad(T deg) {
-  LLU_ASSERT_FP(T);
+  LLU_ASSERT_FLOATING_POINT(T);
   return deg * static_cast<T>(M_PI / 180.);
 }
 
 template <typename T>
 constexpr T rad2deg(T rad) {
-  LLU_ASSERT_FP(T);
+  LLU_ASSERT_FLOATING_POINT(T);
   return rad * static_cast<T>(180. / M_PI);
 }
 
@@ -53,7 +53,7 @@ T clamp(T val, T lower, T upper) {
 
 template <typename T>
 constexpr T lerp(T start, T end, T factor) {
-  LLU_ASSERT_FP(T);
+  LLU_ASSERT_FLOATING_POINT(T);
   factor = clamp<T>(factor, static_cast<T>(0), static_cast<T>(1));
   return start + (end - start) * factor;
 }
@@ -72,7 +72,7 @@ constexpr T pMod(T dividend, T divisor) {  // positive mod, divisor must be posi
 
 template <typename T>
 constexpr T angleDiff(T a1, T a2) {
-  LLU_ASSERT_FP(T);
+  LLU_ASSERT_FLOATING_POINT(T);
   constexpr T pi = static_cast<T>(M_PI);
   a1 -= static_cast<int>(a1 / (2 * pi)) * 2 * pi;
   a2 -= static_cast<int>(a2 / (2 * pi)) * 2 * pi;
