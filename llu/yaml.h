@@ -3,7 +3,11 @@
 
 #include <array>
 #include <stdexcept>
+#include <string>
 #include <vector>
+#if FMT_VERSION < 90000
+#include <sstream>
+#endif
 
 #if __cplusplus >= 201703L
 #include <optional>
@@ -55,7 +59,7 @@ inline Node loadFile(const std::string &filename) {
 inline Node loadFileIf(const std::string &filename) {
   try {
     return YAML::LoadFile(filename);
-  } catch (const YAML::BadFile &e) {
+  } catch (const YAML::BadFile &) {
     return {};
   }
 }
@@ -79,36 +83,71 @@ bool isType(const Node &node) {
 
 inline bool isBool(const Node &node) { return isType<bool>(node); }
 inline bool isFloat(const Node &node) { return isType<double>(node); }
-inline bool isNTuple(const Node &node, std::size_t size) { return node.IsSequence() and node.size() == size; }
-inline bool isValid(const Node &node) { return static_cast<bool>(node); }
+inline bool isDefined(const Node &node) { return node.IsDefined(); }
+inline bool hasValue(const Node &node) { return node and not node.IsNull(); }
 
 template <typename Key>
-bool isValid(const Node &node, const Key &key) {
-  return node and not node.IsScalar() and node[key];
+bool isDefined(const Node &node, const Key &key) {
+  return node and not node.IsScalar() and node[key].IsDefined();
 }
 
-template <typename Key, typename... SeqKeys>
-bool isValid(const Node &node, const Key &key, SeqKeys... seq_keys) {
-  return node and not node.IsScalar() and isValid(node[key], seq_keys...);
-}
-
-inline void assertValid(const Node &node) { LLU_ASSERT(node, "Invalid node."); }
-
-template <typename Key>
-void assertValid(const Node &node, const Key &key) {
-  assertValid(node);
-  LLU_ASSERT(node[key], "Missing Key '{}' for node '{}'.", key, formatNode(node));
-}
-
-inline void assertNTuple(const Node &node, std::size_t size) {
-  assertValid(node);
-  LLU_ASSERT(isNTuple(node, size), "Node '{}' requires to be a {}-tuple.", node, size);
+template <typename Key, typename... Keys>
+bool isDefined(const Node &node, const Key &key, const Keys &...keys) {
+  return isDefined(node, key) and isDefined(node[key], keys...);
 }
 
 template <typename Key>
-void assertNTuple(const Node &node, const Key &key, std::size_t size) {
-  assertValid(node, key);
-  LLU_ASSERT(isNTuple(node[key], size), "Value of key '{}' requires to be a {}-tuple for node '{}'.", key, size,
+bool hasValue(const Node &node, const Key &key) {
+  return isDefined(node, key) and not node[key].IsNull();
+}
+
+template <typename Key, typename... Keys>
+bool hasValue(const Node &node, const Key &key, const Keys &...keys) {
+  return hasValue(node, key) and hasValue(node[key], keys...);
+}
+
+inline void assertDefined(const Node &node) { LLU_ASSERT(isDefined(node), "Undefined node."); }
+
+template <typename Key>
+void assertDefined(const Node &node, const Key &key) {
+  assertDefined(node);
+  LLU_ASSERT(isDefined(node, key), "Missing Key '{}' for node '{}'.", key, formatNode(node));
+}
+
+template <typename Key, typename... Keys>
+void assertDefined(const Node &node, const Key &key, const Keys &...keys) {
+  assertDefined(node, key);
+  assertDefined(node[key], keys...);
+}
+
+inline void assertHasValue(const Node &node) {
+  assertDefined(node);
+  LLU_ASSERT(not node.IsNull(), "Node '{}' requires a value.", formatNode(node));
+}
+
+template <typename Key>
+void assertHasValue(const Node &node, const Key &key) {
+  assertDefined(node, key);
+  LLU_ASSERT(not node[key].IsNull(), "Node '{}' requires a value for key '{}'.", formatNode(node), key);
+}
+
+template <typename Key, typename... Keys>
+void assertHasValue(const Node &node, const Key &key, const Keys &...keys) {
+  assertHasValue(node, key);
+  assertHasValue(node[key], keys...);
+}
+
+inline bool isSequenceOfSize(const Node &node, std::size_t size) { return node.IsSequence() and node.size() == size; }
+
+inline void assertSequenceOfSize(const Node &node, std::size_t size) {
+  assertHasValue(node);
+  LLU_ASSERT(isSequenceOfSize(node, size), "Node '{}' requires to be a sequence of size {}.", formatNode(node), size);
+}
+
+template <typename Key>
+void assertSequenceOfSize(const Node &node, const Key &key, std::size_t size) {
+  assertHasValue(node, key);
+  LLU_ASSERT(isSequenceOfSize(node[key], size), "'{}' requires to be a sequence of size {} for node '{}'.", key, size,
              formatNode(node));
 }
 
@@ -152,26 +191,21 @@ void setTo(const Node &node, Eigen::Array<T, -1, 1> &value);
 
 template <typename T>
 void setTo(const Node &node, std::vector<T> &value) {
-  if (value.empty()) {
-    if (node.IsScalar()) {
-      value.resize(1);
-      setTo(node, value.back());
-    } else {
-      value.resize(node.size());
-      for (std::size_t i{}; i < node.size(); ++i) {
-        setTo(node[i], value[i]);
-      }
-    }
-    return;
-  }
   if (node.IsScalar()) {
+    if (value.empty()) value.resize(1);
     setTo(node, value.front());
     for (std::size_t i{1}; i < value.size(); ++i) {
       value[i] = value.front();
     }
     return;
   }
-  LLU_ASSERT_EQ(node.size(), value.size(), "Size mismatch between node '{}' and value '{}'.", formatNode(node), value);
+
+  LLU_ASSERT(node.IsSequence(), "Expected a scalar or a sequence for node '{}'.", formatNode(node));
+  if (value.empty()) {
+    value.resize(node.size());
+  } else if (node.size() != value.size()) {  // raise error
+    LLU_ERROR("Expected size of node '{}' to be {}, but got {}.", formatNode(node), value.size(), node.size());
+  }
   for (std::size_t i{}; i < node.size(); ++i) {
     setTo(node[i], value[i]);
   }
@@ -186,7 +220,7 @@ void setTo(const Node &node, std::array<T, N> &value) {
     value.fill(scalar);
     return;
   }
-  assertNTuple(node, N);
+  assertSequenceOfSize(node, N);
   for (std::size_t i{}; i < N; ++i) {
     setTo(node[i], value[i]);
   }
@@ -198,11 +232,11 @@ void setTo(const Node &node, range_t<dtype> &value) {
     setTo(node, value.lower());
     value.upper() = value.lower();
   } else if (node.IsMap()) {
-    assertValid(node, "lower");
-    assertValid(node, "upper");
+    assertHasValue(node, "lower");
+    assertHasValue(node, "upper");
     setTo(node["lower"], value.lower());
     setTo(node["upper"], value.upper());
-  } else if (isNTuple(node, 2)) {
+  } else if (isSequenceOfSize(node, 2)) {
     setTo(node[0], value.lower());
     setTo(node[1], value.upper());
   } else {
@@ -229,7 +263,7 @@ template <typename T, int N>
 void setTo(const Node &node, Eigen::Array<T, N, 1> &value) {
   std::array<T, N> result;
   setTo(node, result);
-  value = Eigen::Map<Eigen::Matrix<T, N, 1>>(result.data());
+  value = Eigen::Map<Eigen::Array<T, N, 1>>(result.data());
 }
 
 template <typename T>
@@ -237,7 +271,7 @@ void setTo(const Node &node, Eigen::Array<T, -1, 1> &value) {
   std::vector<T> result;
   if (value.size() != 0) result.resize(value.size());
   setTo(node, result);
-  value = Eigen::Map<Eigen::Matrix<T, -1, 1>>(result.data(), result.size());
+  value = Eigen::Map<Eigen::Array<T, -1, 1>>(result.data(), result.size());
 }
 
 #if __cplusplus >= 201703L
@@ -256,29 +290,29 @@ void setTo(const Node &node, std::optional<T> &value) {
 
 template <typename Value>
 void setTo(const Node &node, Value &value) {
-  assertValid(node);
+  assertDefined(node);
   impl::setTo(node, value);
 }
 
 template <typename Value, typename Key>
 void setTo(const Node &node, const Key &key, Value &value) {
-  assertValid(node, key);
+  assertDefined(node, key);
   impl::setTo(node[key], value);
 }
 
 template <typename Value>
 void setIf(const Node &node, Value &value) {
-  if (node) impl::setTo(node, value);
+  if (isDefined(node)) impl::setTo(node, value);
 }
 
 template <typename Value, typename Key>
 void setIf(const Node &node, const Key &key, Value &value) {
-  if (isValid(node, key)) impl::setTo(node[key], value);
+  if (isDefined(node, key)) impl::setTo(node[key], value);
 }
 
 template <typename Key>
 Node getItem(const Node &node, const Key &key) {
-  assertValid(node, key);
+  assertDefined(node, key);
   return node[key];
 }
 
@@ -298,12 +332,12 @@ Value readAs(const Node &node, const Key &key) {
 
 template <typename Value>
 Value readIf(const Node &node, const Value &default_value) {
-  return node ? readAs<Value>(node) : default_value;
+  return isDefined(node) ? readAs<Value>(node) : default_value;
 }
 
 template <typename Value, typename Key>
 Value readIf(const Node &node, const Key &key, const Value &default_value) {
-  return node ? readIf<Value>(node[key], default_value) : default_value;
+  return isDefined(node, key) ? readAs<Value>(node[key]) : default_value;
 }
 }  // namespace yml
 }  // namespace llu

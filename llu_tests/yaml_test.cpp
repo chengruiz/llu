@@ -6,37 +6,37 @@
 TEST(LLU_YAML_TEST, LLU_TYPE_TEST) {
   YAML::Node node = YAML::Load("{a: 1, b: [1, 2, 3], c: 2.5, d: false}");
   ASSERT_TRUE(llu::yml::isType<int>(node["a"])) << "Expected a int";
-  ASSERT_TRUE(llu::yml::isNTuple(node["b"], 3)) << "Expected a 3-tuple";
+  ASSERT_TRUE(llu::yml::isSequenceOfSize(node["b"], 3)) << "Expected a 3-tuple";
   ASSERT_TRUE(llu::yml::isType<double>(node["c"])) << "Expected a double";
   ASSERT_TRUE(llu::yml::isFloat(node["c"])) << "Expected a int";
   ASSERT_TRUE(llu::yml::isType<bool>(node["d"])) << "Expected a bool";
   ASSERT_TRUE(llu::yml::isBool(node["d"])) << "Expected a int";
-  ASSERT_FALSE(llu::yml::isNTuple(node["d"], 2)) << "Expected not a 2-tuple";
+  ASSERT_FALSE(llu::yml::isSequenceOfSize(node["d"], 2)) << "Expected not a 2-tuple";
   ASSERT_FALSE(llu::yml::isType<int>(node["d"])) << "Expected not a int";
-  llu::yml::assertNTuple(node["b"], 3);
-  llu::yml::assertNTuple(node, "b", 3);
+  llu::yml::assertSequenceOfSize(node["b"], 3);
+  llu::yml::assertSequenceOfSize(node, "b", 3);
 }
 
 TEST(LLU_YAML_TEST, LLU_VALID_TEST) {
   YAML::Node node = YAML::Load("{a: 1, b: [1, 2, 3], c: 2.5, d: false}");
-  ASSERT_TRUE(llu::yml::isValid(node)) << "Expected a valid node";
-  ASSERT_TRUE(llu::yml::isValid(node, "a")) << "Expected a valid node";
-  ASSERT_TRUE(llu::yml::isValid(node, "b", 1)) << "Expected a valid node";
-  ASSERT_FALSE(llu::yml::isValid(node, "b", 3)) << "Expected an invalid node";
-  ASSERT_FALSE(llu::yml::isValid(node, "not_a_key")) << "Expected an invalid node";
-  ASSERT_FALSE(llu::yml::isValid(node, "not_a_key", "not_a_key")) << "Expected an invalid node";
+  ASSERT_TRUE(llu::yml::isDefined(node)) << "Expected a valid node";
+  ASSERT_TRUE(llu::yml::isDefined(node, "a")) << "Expected a valid node";
+  ASSERT_TRUE(llu::yml::isDefined(node, "b", 1)) << "Expected a valid node";
+  ASSERT_FALSE(llu::yml::isDefined(node, "b", 3)) << "Expected an invalid node";
+  ASSERT_FALSE(llu::yml::isDefined(node, "not_a_key")) << "Expected an invalid node";
+  ASSERT_FALSE(llu::yml::isDefined(node, "not_a_key", "not_a_key")) << "Expected an invalid node";
 
-  llu::yml::assertValid(node, "a");
-  llu::yml::assertValid(node, "b");
-  llu::yml::assertValid(node, "c");
-  llu::yml::assertValid(node, "d");
+  llu::yml::assertDefined(node, "a");
+  llu::yml::assertDefined(node, "b");
+  llu::yml::assertDefined(node, "c");
+  llu::yml::assertDefined(node, "d");
   try {
-    llu::yml::assertValid(node, "not_a_key");
+    llu::yml::assertDefined(node, "not_a_key");
     ASSERT_TRUE(false) << "Expected an exception";
   } catch (const std::runtime_error &e) {}
 
   try {
-    llu::yml::assertNTuple(node, "a", 2);
+    llu::yml::assertSequenceOfSize(node, "a", 2);
     ASSERT_TRUE(false) << "Expected an exception";
   } catch (const std::runtime_error &e) {}
 }
