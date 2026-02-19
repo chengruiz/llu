@@ -120,6 +120,28 @@ void assertDefined(const Node &node, const Key &key, const Keys &...keys) {
   assertDefined(node[key], keys...);
 }
 
+inline std::string getDefinedKey(const Node &node, const std::string &key1, const std::string &key2) {
+  LLU_ASSERT(node.IsMap(), "Expected a map node to get defined keys, but got '{}'.", formatNode(node));
+  return isDefined(node, key1) ? key1 : key2;
+}
+
+inline std::string getDefinedKey(const Node &node, const std::string &key1, const std::string &key2,
+                                 const std::string &key3) {
+  LLU_ASSERT(node.IsMap(), "Expected a map node to get defined keys, but got '{}'.", formatNode(node));
+  if (isDefined(node, key1)) return key1;
+  if (isDefined(node, key2)) return key2;
+  return key3;
+}
+
+inline std::string getDefinedKey(const Node &node, const std::string &key1, const std::string &key2,
+                                 const std::string &key3, const std::string &key4) {
+  LLU_ASSERT(node.IsMap(), "Expected a map node to get defined keys, but got '{}'.", formatNode(node));
+  if (isDefined(node, key1)) return key1;
+  if (isDefined(node, key2)) return key2;
+  if (isDefined(node, key3)) return key3;
+  return key4;
+}
+
 inline void assertHasValue(const Node &node) {
   assertDefined(node);
   LLU_ASSERT(not node.IsNull(), "Node '{}' requires a value.", formatNode(node));
