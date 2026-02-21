@@ -12,11 +12,11 @@
 
 #include <type_traits>
 #if __cplusplus >= 201703L
-#define LLU_ASSERT_FLOATING_POINT(T)  static_assert(std::is_floating_point_v<T>)
-#define LLU_ASSERT_INT(T) static_assert(std::is_integral<T>())
+#define LLU_ASSERT_FLOATING_POINT(T) static_assert(std::is_floating_point_v<T>)
+#define LLU_ASSERT_INT(T)            static_assert(std::is_integral<T>())
 #else
-#define LLU_ASSERT_FLOATING_POINT(T)  static_assert(true, "LLU_ASSERT_FLOATING_POINT failed.")
-#define LLU_ASSERT_INT(T) static_assert(std::is_integral<T>(), "LLU_ASSERT_INT failed.")
+#define LLU_ASSERT_FLOATING_POINT(T) static_assert(true, "LLU_ASSERT_FLOATING_POINT failed.")
+#define LLU_ASSERT_INT(T)            static_assert(std::is_integral<T>(), "LLU_ASSERT_INT failed.")
 #endif
 
 #endif  // LLU_MACRO_H_

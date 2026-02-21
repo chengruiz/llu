@@ -48,17 +48,17 @@ inline std::string formatNode(const Node &node) {
   return node_str;
 }
 
-inline Node loadFile(const std::string &filename) {
+inline Node loadFile(const std::string &path) {
   try {
-    return YAML::LoadFile(filename);
+    return YAML::LoadFile(path);
   } catch (const YAML::BadFile &error) {
-    throw std::runtime_error(fmt::format("Failed to load YAML file '{}' ({}).", filename, error.what()));
+    throw std::runtime_error(fmt::format("Failed to load YAML file '{}' ({}).", path, error.what()));
   }
 }
 
-inline Node loadFileIf(const std::string &filename) {
+inline Node loadFileIf(const std::string &path) {
   try {
-    return YAML::LoadFile(filename);
+    return YAML::LoadFile(path);
   } catch (const YAML::BadFile &) {
     return {};
   }
