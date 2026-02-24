@@ -225,8 +225,8 @@ void setTo(const Node &node, std::vector<T> &value) {
   LLU_ASSERT(node.IsSequence(), "Expected a scalar or a sequence for node '{}'.", formatNode(node));
   if (value.empty()) {
     value.resize(node.size());
-  } else if (node.size() != value.size()) {  // raise error
-    LLU_ERROR("Expected size of node '{}' to be {}, but got {}.", formatNode(node), value.size(), node.size());
+  } else if (node.size() != value.size()) {
+    LLU_THROW("Expected size of node '{}' to be {}, but got {}.", formatNode(node), value.size(), node.size());
   }
   for (std::size_t i{}; i < node.size(); ++i) {
     setTo(node[i], value[i]);

@@ -17,7 +17,7 @@
 namespace llu {
 namespace impl {
 template <typename... Args>
-[[noreturn]] void errorHelper(const char *file_line, const char *msg, Args &&...args) {
+[[noreturn]] void throwHelper(const char *file_line, const char *msg, Args &&...args) {
   std::string prefix = fmt::format("{} ", file_line);
   throw std::runtime_error(prefix + fmt::format(msg, std::forward<Args>(args)...));
 }
@@ -41,7 +41,7 @@ void assertEqHelper(T1 value, T2 expected, const char *value_str, const char *ex
 }  // namespace impl
 }  // namespace llu
 
-#define LLU_ERROR(...)             ::llu::impl::errorHelper(LLU_FILELINE(), __VA_ARGS__)
+#define LLU_THROW(...)             ::llu::impl::throwHelper(LLU_FILELINE(), __VA_ARGS__)
 #define LLU_ASSERT(condition, ...) ::llu::impl::assertHelper(condition, #condition, LLU_FILELINE(), __VA_ARGS__)
 #define LLU_ASSERT_EQ(value, expected, ...) \
   ::llu::impl::assertEqHelper(value, expected, #value, #expected, LLU_FILELINE(), __VA_ARGS__)
