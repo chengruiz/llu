@@ -9,24 +9,22 @@
 #include <fmt/core.h>
 
 namespace llu {
-inline void toLowercaseInplace(std::string &str) {
-  std::transform(str.begin(), str.end(), str.begin(), [](char ch) { return static_cast<char>(tolower(ch)); });
+inline void toLowercaseInplace(std::string &value) {
+  std::transform(value.begin(), value.end(), value.begin(), [](char ch) { return static_cast<char>(tolower(ch)); });
 }
 
-inline std::string toLowercase(const std::string &str) {
-  std::string result = str;
-  toLowercaseInplace(result);
-  return result;
+inline std::string toLowercase(std::string value) {
+  toLowercaseInplace(value);
+  return value;
 }
 
-inline void toUppercaseInplace(std::string &str) {
-  std::transform(str.begin(), str.end(), str.begin(), [](char ch) { return static_cast<char>(toupper(ch)); });
+inline void toUppercaseInplace(std::string &value) {
+  std::transform(value.begin(), value.end(), value.begin(), [](char ch) { return static_cast<char>(toupper(ch)); });
 }
 
-inline std::string toUppercase(const std::string &str) {
-  std::string result = str;
-  toUppercaseInplace(result);
-  return result;
+inline std::string toUppercase(std::string value) {
+  toUppercaseInplace(value);
+  return value;
 }
 
 inline bool getenv(const char *name, std::string &result) {
