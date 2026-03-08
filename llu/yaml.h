@@ -4,6 +4,7 @@
 #include <array>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 #if FMT_VERSION < 90000
 #include <sstream>
@@ -40,13 +41,51 @@ inline std::string formatNode(const Node &node) {
   ss << node;
   std::string node_str = ss.str();
 #else
-  std::string node_str = fmt::format("{}", node);
+  std::string node_str = fmt::format("'{}'", node);
 #endif
   if (node_str.find('\n') != std::string::npos) {
-    node_str = fmt::format("''\n{}\n''", node_str);
+    for (std::size_t pos = 0; (pos = node_str.find('\n', pos)) != std::string::npos; pos += 3) {
+      node_str.replace(pos, 1, "\n  ");
+    }
+    node_str = fmt::format("'''\n  {}\n'''", node_str);
   }
   return node_str;
 }
+
+class ParsingError : public std::exception {
+ public:
+  explicit ParsingError(YAML::Node node, std::string reason, std::string access_path = "")
+      : context_node_(std::move(node)), reason_(std::move(reason)), access_path_(std::move(access_path)) {}
+
+  template <typename Key>
+  ParsingError withParent(const Node &parent_node, const Key &key) const {
+    return ParsingError(parent_node, reason_, fmt::format("[{}]{}", key, access_path_));
+  }
+
+  const char *what() const noexcept override {
+    if (not what_.empty()) return what_.c_str();
+    try {
+      what_ = fmt::format("Error parsing YAML: {}.", reason_);
+      if (context_node_) what_ += fmt::format("\nNode: {}", formatNode(context_node_));
+      if (not access_path_.empty()) what_ += fmt::format("\nPath: {}", access_path_);
+    } catch (...) {
+      what_ = reason_;
+    }
+    return what_.c_str();
+  }
+
+ private:
+  YAML::Node context_node_;
+  std::string reason_;
+  std::string access_path_;
+  mutable std::string what_;
+};
+
+struct BadConversionError : ParsingError {
+  template <typename T>
+  BadConversionError(const YAML::Node &node, const T &value)
+      : ParsingError(node, fmt::format("Bad conversion to type '{}'.", getTypeName(value))) {}
+};
 
 inline Node loadFile(const std::string &path) {
   try {
@@ -106,79 +145,100 @@ bool hasValue(const Node &node, const Key &key, const Keys &...keys) {
   return hasValue(node, key) and hasValue(node[key], keys...);
 }
 
-inline void assertDefined(const Node &node) { LLU_ASSERT(isDefined(node), "Undefined node."); }
+inline void assertDefined(const Node &node) {
+  if (not isDefined(node)) throw ParsingError(node, "Undefined node");
+}
 
 template <typename Key>
 void assertDefined(const Node &node, const Key &key) {
-  assertDefined(node);
-  LLU_ASSERT(isDefined(node, key), "Missing Key '{}' for node '{}'.", key, formatNode(node));
+  if (isDefined(node, key)) return;
+  throw ParsingError(node, "Undefined node", key);
 }
 
 template <typename Key, typename... Keys>
 void assertDefined(const Node &node, const Key &key, const Keys &...keys) {
   assertDefined(node, key);
-  assertDefined(node[key], keys...);
+  try {
+    assertDefined(node[key], keys...);
+  } catch (const ParsingError &error) {
+    throw error.withParent(node, key);
+  }
 }
 
 inline std::string getDefinedKey(const Node &node, const std::string &key1, const std::string &key2) {
-  LLU_ASSERT(node.IsMap(), "Expected a map node to get defined keys, but got '{}'.", formatNode(node));
-  return isDefined(node, key1) ? key1 : key2;
+  if (not node.IsMap()) throw ParsingError(node, "Expected a map node");
+  if (isDefined(node, key1)) return key1;
+  if (isDefined(node, key2)) return key2;
+  return "";
 }
 
 inline std::string getDefinedKey(const Node &node, const std::string &key1, const std::string &key2,
                                  const std::string &key3) {
-  LLU_ASSERT(node.IsMap(), "Expected a map node to get defined keys, but got '{}'.", formatNode(node));
+  if (not node.IsMap()) throw ParsingError(node, "Expected a map node");
   if (isDefined(node, key1)) return key1;
   if (isDefined(node, key2)) return key2;
-  return key3;
+  if (isDefined(node, key3)) return key3;
+  return "";
 }
 
 inline std::string getDefinedKey(const Node &node, const std::string &key1, const std::string &key2,
                                  const std::string &key3, const std::string &key4) {
-  LLU_ASSERT(node.IsMap(), "Expected a map node to get defined keys, but got '{}'.", formatNode(node));
+  if (not node.IsMap()) throw ParsingError(node, "Expected a map node");
   if (isDefined(node, key1)) return key1;
   if (isDefined(node, key2)) return key2;
   if (isDefined(node, key3)) return key3;
-  return key4;
+  if (isDefined(node, key4)) return key4;
+  return "";
 }
 
 inline void assertHasValue(const Node &node) {
   assertDefined(node);
-  LLU_ASSERT(not node.IsNull(), "Node '{}' requires a value.", formatNode(node));
+  if (node.IsNull()) throw ParsingError(node, "Expected a value");
 }
 
 template <typename Key>
 void assertHasValue(const Node &node, const Key &key) {
   assertDefined(node, key);
-  LLU_ASSERT(not node[key].IsNull(), "Node '{}' requires a value for key '{}'.", formatNode(node), key);
+  if (not node[key].IsNull()) return;
+  throw ParsingError(node, "Expected a value", key);
 }
 
 template <typename Key, typename... Keys>
 void assertHasValue(const Node &node, const Key &key, const Keys &...keys) {
   assertHasValue(node, key);
-  assertHasValue(node[key], keys...);
+  try {
+    assertHasValue(node[key], keys...);
+  } catch (const ParsingError &error) {
+    throw error.withParent(node, key);
+  }
+}
+
+inline void assertSequence(const Node &node) {
+  assertHasValue(node);
+  if (node.IsSequence()) return;
+  throw ParsingError(node, "Expected a sequence");
+}
+
+template <typename Key>
+inline void assertSequence(const Node &node, const Key &key) {
+  if (node and node[key].IsSequence()) return;
+  throw ParsingError(node, "Expected a sequence", key);
 }
 
 inline bool isSequenceOfSize(const Node &node, std::size_t size) { return node.IsSequence() and node.size() == size; }
 
 inline void assertSequenceOfSize(const Node &node, std::size_t size) {
   assertHasValue(node);
-  LLU_ASSERT(isSequenceOfSize(node, size), "Node '{}' requires to be a sequence of size {}.", formatNode(node), size);
+  if (isSequenceOfSize(node, size)) return;
+  throw ParsingError(node, fmt::format("Expected a sequence of size {}", size));
 }
 
 template <typename Key>
 void assertSequenceOfSize(const Node &node, const Key &key, std::size_t size) {
   assertHasValue(node, key);
-  LLU_ASSERT(isSequenceOfSize(node[key], size), "'{}' requires to be a sequence of size {} for node '{}'.", key, size,
-             formatNode(node));
+  if (isSequenceOfSize(node[key], size)) return;
+  throw ParsingError(node, fmt::format("Expected a sequence of size {}", size), key);
 }
-
-struct BadConversionError : std::runtime_error {
-  template <typename T>
-  BadConversionError(const YAML::Node &node, const T &value)
-      : std::runtime_error(
-            fmt::format("Bad conversion from node '{}' to type '{}'.", formatNode(node), getTypeName(value))) {}
-};
 
 namespace impl {
 template <typename Value>
@@ -222,14 +282,20 @@ void setTo(const Node &node, std::vector<T> &value) {
     return;
   }
 
-  LLU_ASSERT(node.IsSequence(), "Expected a scalar or a sequence for node '{}'.", formatNode(node));
+  if (not node.IsSequence()) {
+    throw ParsingError(node, "Expected scalar or sequence");
+  }
   if (value.empty()) {
     value.resize(node.size());
   } else if (node.size() != value.size()) {
-    LLU_THROW("Expected size of node '{}' to be {}, but got {}.", formatNode(node), value.size(), node.size());
+    throw ParsingError(node, fmt::format("Expected size {}, but got {}", value.size(), node.size()));
   }
   for (std::size_t i{}; i < node.size(); ++i) {
-    setTo(node[i], value[i]);
+    try {
+      setTo(node[i], value[i]);
+    } catch (const ParsingError &error) {
+      throw error.withParent(node, i);
+    }
   }
 }
 
@@ -242,9 +308,14 @@ void setTo(const Node &node, std::array<T, N> &value) {
     value.fill(scalar);
     return;
   }
+
   assertSequenceOfSize(node, N);
   for (std::size_t i{}; i < N; ++i) {
-    setTo(node[i], value[i]);
+    try {
+      setTo(node[i], value[i]);
+    } catch (const ParsingError &error) {
+      throw error.withParent(node, i);
+    }
   }
 }
 
@@ -256,11 +327,27 @@ void setTo(const Node &node, range_t<dtype> &value) {
   } else if (node.IsMap()) {
     assertHasValue(node, "lower");
     assertHasValue(node, "upper");
-    setTo(node["lower"], value.lower());
-    setTo(node["upper"], value.upper());
+    try {
+      setTo(node["lower"], value.lower());
+    } catch (const ParsingError &error) {
+      throw error.withParent(node, "lower");
+    }
+    try {
+      setTo(node["upper"], value.upper());
+    } catch (const ParsingError &error) {
+      throw error.withParent(node, "upper");
+    }
   } else if (isSequenceOfSize(node, 2)) {
-    setTo(node[0], value.lower());
-    setTo(node[1], value.upper());
+    try {
+      setTo(node[0], value.lower());
+    } catch (const ParsingError &error) {
+      throw error.withParent(node, 0);
+    }
+    try {
+      setTo(node[1], value.upper());
+    } catch (const ParsingError &error) {
+      throw error.withParent(node, 1);
+    }
   } else {
     throw BadConversionError(node, value);
   }
@@ -319,7 +406,11 @@ void setTo(const Node &node, Value &value) {
 template <typename Value, typename Key>
 void setTo(const Node &node, const Key &key, Value &value) {
   assertDefined(node, key);
-  impl::setTo(node[key], value);
+  try {
+    impl::setTo(node[key], value);
+  } catch (const ParsingError &error) {
+    throw error.withParent(node, key);
+  }
 }
 
 template <typename Value>
@@ -329,7 +420,13 @@ void setIf(const Node &node, Value &value) {
 
 template <typename Value, typename Key>
 void setIf(const Node &node, const Key &key, Value &value) {
-  if (isDefined(node, key)) impl::setTo(node[key], value);
+  if (isDefined(node, key)) {
+    try {
+      impl::setTo(node[key], value);
+    } catch (const ParsingError &error) {
+      throw error.withParent(node, key);
+    }
+  }
 }
 
 template <typename Key>
@@ -359,7 +456,7 @@ Value readIf(const Node &node, const Value &default_value) {
 
 template <typename Value, typename Key>
 Value readIf(const Node &node, const Key &key, const Value &default_value) {
-  return isDefined(node, key) ? readAs<Value>(node[key]) : default_value;
+  return isDefined(node, key) ? readAs<Value>(node, key) : default_value;
 }
 }  // namespace yml
 }  // namespace llu
