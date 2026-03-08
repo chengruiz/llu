@@ -2,6 +2,10 @@
 #define LLU_YAML_H_
 
 #include <array>
+#include <cstddef>
+#include <initializer_list>
+#include <iterator>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -14,6 +18,7 @@
 #include <optional>
 #endif
 
+#include <fmt/core.h>
 #include <fmt/ostream.h>
 #include <fmt/ranges.h>
 #include <yaml-cpp/yaml.h>
@@ -33,431 +38,516 @@ struct fmt::formatter<YAML::Node> : fmt::ostream_formatter {};
  */
 namespace llu {
 namespace yml {
-using Node = YAML::Node;
+struct YamlError : std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
 
-inline std::string formatNode(const Node &node) {
+struct BadFileError : YamlError {
+  using YamlError::YamlError;
+};
+
+inline std::string toString(const YAML::Node &node) {
 #if FMT_VERSION < 90000
   std::stringstream ss;
   ss << node;
   std::string node_str = ss.str();
 #else
-  std::string node_str = fmt::format("'{}'", node);
+  std::string node_str = fmt::format("{}", node);
 #endif
   if (node_str.find('\n') != std::string::npos) {
     for (std::size_t pos = 0; (pos = node_str.find('\n', pos)) != std::string::npos; pos += 3) {
       node_str.replace(pos, 1, "\n  ");
     }
-    node_str = fmt::format("'''\n  {}\n'''", node_str);
+    node_str = fmt::format("''\n  {}\n''", node_str);
   }
-  return node_str;
+  return fmt::format("'{}'", node_str);
 }
 
-class ParsingError : public std::exception {
- public:
-  explicit ParsingError(YAML::Node node, std::string reason, std::string access_path = "")
-      : context_node_(std::move(node)), reason_(std::move(reason)), access_path_(std::move(access_path)) {}
-
-  template <typename Key>
-  ParsingError withParent(const Node &parent_node, const Key &key) const {
-    return ParsingError(parent_node, reason_, fmt::format("[{}]{}", key, access_path_));
-  }
-
-  const char *what() const noexcept override {
-    if (not what_.empty()) return what_.c_str();
+template <typename T>
+struct Decoder {
+  static void decode(const YAML::Node &node, T &value) {
     try {
-      what_ = fmt::format("Error parsing YAML: {}.", reason_);
-      if (context_node_) what_ += fmt::format("\nNode: {}", formatNode(context_node_));
-      if (not access_path_.empty()) what_ += fmt::format("\nPath: {}", access_path_);
-    } catch (...) {
-      what_ = reason_;
+      value = node.as<T>();
+    } catch (const YAML::Exception &) {
+      throw YamlError(fmt::format("Failed to decode as {}", getTypeName(value)));
     }
-    return what_.c_str();
   }
+};
+
+class Node {
+ public:
+  class iterator_value;
+  class iterator;
+  class const_iterator;
+
+  struct Context {
+    std::string filename;
+    YAML::Node top_node;
+    std::vector<YAML::Node> keys;
+  };
+
+  Node() : node_(YAML::Node(YAML::NodeType::Undefined)) {}
+  explicit Node(YAML::Node node) : node_(std::move(node)) {
+    if (node_) context_.top_node = node_;
+  }
+  Node(YAML::Node node, Context context) : node_(std::move(node)), context_(std::move(context)) {
+    if (not context_.top_node and node_) context_.top_node = node_;
+  }
+
+  operator YAML::Node() const { return node_; }
+  YAML::Node &native() { return node_; }
+  const YAML::Node &native() const { return node_; }
+  const Context &context() const { return context_; }
+  std::size_t size() const { return isDefined() ? node_.size() : 0; }
+  iterator begin();
+  const_iterator begin() const;
+  iterator end();
+  const_iterator end() const;
+  const_iterator cbegin() const;
+  const_iterator cend() const;
+
+  template <typename T>
+  bool isType() const;
+  bool isBool() const { return isType<bool>(); }
+  bool isFloat() const { return isType<double>(); }
+  bool isDefined() const { return node_.IsDefined(); }
+  bool isSequence() const { return isDefined() and node_.IsSequence(); }
+  bool isSequence(std::size_t size) const { return isSequence() and node_.size() == size; }
+  bool isScalar() const { return isDefined() and node_.IsScalar(); }
+  bool isMap() const { return isDefined() and node_.IsMap(); }
+  bool isNull() const { return isDefined() and node_.IsNull(); }
+  bool hasValue() const { return isDefined() and not isNull(); }
+
+  inline void assertBool() const { throwIf(not isBool(), "Expected a boolean value"); }
+  inline void assertFloat() const { throwIf(not isFloat(), "Expected a floating-point value"); }
+  inline void assertDefined() const { throwIf(not isDefined(), "Undefined node"); }
+  inline void assertSequence() const { throwIf(not isSequence(), "Expected a sequence"); }
+  inline void assertSequence(std::size_t size) const {
+    throwIf(not isSequence(size), fmt::format("Expected a sequence of size {}", size));
+  }
+  inline void assertScalar() const { throwIf(not isScalar(), "Expected a scalar"); }
+  inline void assertMap() const { throwIf(not isMap(), "Expected a map"); }
+  inline void assertIterable() const { throwIf(not(isSequence() or isMap()), "Expected a sequence or map"); }
+  inline void assertHasValue() const { throwIf(not hasValue(), "Expected a value"); }
+  template <typename Key, typename... Keys>
+  inline void assertHasValue(const Key &key, const Keys &...keys) const {
+    assertIterable();
+    throwUnless(operator[](key).hasValue(), fmt::format("Expected key '{}' to have a value", key));
+    assertHasValue(keys...);
+  }
+  void assertMutuallyExclusive(std::initializer_list<std::string> keys) const;
+  std::string getDefinedKey(std::initializer_list<std::string> keys) const;
+
+  template <typename T>
+  T as() const;
+  template <typename T>
+  T as(const T &default_value) const;
+  template <typename T>
+  void to(T &value, bool allow_missing = false) const;
+  template <typename Key>
+  Node operator[](const Key &key) const;
 
  private:
-  YAML::Node context_node_;
-  std::string reason_;
-  std::string access_path_;
-  mutable std::string what_;
+  template <typename Key>
+  Context makeChildContext(const Key &key) const {
+    Context child_context = context_;
+    child_context.keys.emplace_back(key);
+    return child_context;
+  }
+
+  void throwUnless(bool condition, const std::string &reason) const;
+  void throwIf(bool condition, const std::string &reason) const { throwUnless(not condition, reason); }
+
+  YAML::Node node_;
+  Context context_;
 };
 
-struct BadConversionError : ParsingError {
-  template <typename T>
-  BadConversionError(const YAML::Node &node, const T &value)
-      : ParsingError(node, fmt::format("Bad conversion to type '{}'.", getTypeName(value))) {}
-};
-
-inline Node loadFile(const std::string &path) {
-  try {
-    return YAML::LoadFile(path);
-  } catch (const YAML::BadFile &error) {
-    throw std::runtime_error(fmt::format("Failed to load YAML file '{}' ({}).", path, error.what()));
-  }
-}
-
-inline Node loadFileIf(const std::string &path) {
-  try {
-    return YAML::LoadFile(path);
-  } catch (const YAML::BadFile &) {
-    return {};
-  }
-}
-
-/**
- * @brief Checks if a YAML node can be converted to a given type.
- *
- * @tparam T The type to check for.
- * @param node The YAML node to check.
- * @return true if the node can be converted to the given type, false otherwise.
- */
 template <typename T>
-bool isType(const Node &node) {
+bool Node::isType() const {
   try {
-    node.as<T>();
+    T value{};
+    Decoder<T>::decode(node_, value);
     return true;
-  } catch (const YAML::Exception &) {
+  } catch (const std::exception &) {
     return false;
   }
 }
 
-inline bool isBool(const Node &node) { return isType<bool>(node); }
-inline bool isFloat(const Node &node) { return isType<double>(node); }
-inline bool isDefined(const Node &node) { return node.IsDefined(); }
-inline bool hasValue(const Node &node) { return node and not node.IsNull(); }
-
-template <typename Key>
-bool isDefined(const Node &node, const Key &key) {
-  return node and not node.IsScalar() and node[key].IsDefined();
-}
-
-template <typename Key, typename... Keys>
-bool isDefined(const Node &node, const Key &key, const Keys &...keys) {
-  return isDefined(node, key) and isDefined(node[key], keys...);
-}
-
-template <typename Key>
-bool hasValue(const Node &node, const Key &key) {
-  return isDefined(node, key) and not node[key].IsNull();
-}
-
-template <typename Key, typename... Keys>
-bool hasValue(const Node &node, const Key &key, const Keys &...keys) {
-  return hasValue(node, key) and hasValue(node[key], keys...);
-}
-
-inline void assertDefined(const Node &node) {
-  if (not isDefined(node)) throw ParsingError(node, "Undefined node");
-}
-
-template <typename Key>
-void assertDefined(const Node &node, const Key &key) {
-  if (isDefined(node, key)) return;
-  throw ParsingError(node, "Undefined node", key);
-}
-
-template <typename Key, typename... Keys>
-void assertDefined(const Node &node, const Key &key, const Keys &...keys) {
-  assertDefined(node, key);
-  try {
-    assertDefined(node[key], keys...);
-  } catch (const ParsingError &error) {
-    throw error.withParent(node, key);
+inline void Node::assertMutuallyExclusive(std::initializer_list<std::string> keys) const {
+  assertMap();
+  std::string found_key;
+  for (const auto &key : keys) {
+    if (operator[](key).hasValue()) {
+      throwIf(not found_key.empty(), fmt::format("Mutually exclusive keys {}", keys));
+      found_key = key;
+    }
   }
 }
 
-inline std::string getDefinedKey(const Node &node, const std::string &key1, const std::string &key2) {
-  if (not node.IsMap()) throw ParsingError(node, "Expected a map node");
-  if (isDefined(node, key1)) return key1;
-  if (isDefined(node, key2)) return key2;
-  return "";
-}
-
-inline std::string getDefinedKey(const Node &node, const std::string &key1, const std::string &key2,
-                                 const std::string &key3) {
-  if (not node.IsMap()) throw ParsingError(node, "Expected a map node");
-  if (isDefined(node, key1)) return key1;
-  if (isDefined(node, key2)) return key2;
-  if (isDefined(node, key3)) return key3;
-  return "";
-}
-
-inline std::string getDefinedKey(const Node &node, const std::string &key1, const std::string &key2,
-                                 const std::string &key3, const std::string &key4) {
-  if (not node.IsMap()) throw ParsingError(node, "Expected a map node");
-  if (isDefined(node, key1)) return key1;
-  if (isDefined(node, key2)) return key2;
-  if (isDefined(node, key3)) return key3;
-  if (isDefined(node, key4)) return key4;
-  return "";
-}
-
-inline void assertHasValue(const Node &node) {
-  assertDefined(node);
-  if (node.IsNull()) throw ParsingError(node, "Expected a value");
-}
-
-template <typename Key>
-void assertHasValue(const Node &node, const Key &key) {
-  assertDefined(node, key);
-  if (not node[key].IsNull()) return;
-  throw ParsingError(node, "Expected a value", key);
-}
-
-template <typename Key, typename... Keys>
-void assertHasValue(const Node &node, const Key &key, const Keys &...keys) {
-  assertHasValue(node, key);
-  try {
-    assertHasValue(node[key], keys...);
-  } catch (const ParsingError &error) {
-    throw error.withParent(node, key);
+inline std::string Node::getDefinedKey(std::initializer_list<std::string> keys) const {
+  assertMap();
+  for (const auto &key : keys) {
+    if (operator[](key).hasValue()) return key;
   }
-}
-
-inline void assertSequence(const Node &node) {
-  assertHasValue(node);
-  if (node.IsSequence()) return;
-  throw ParsingError(node, "Expected a sequence");
-}
-
-template <typename Key>
-inline void assertSequence(const Node &node, const Key &key) {
-  if (node and node[key].IsSequence()) return;
-  throw ParsingError(node, "Expected a sequence", key);
-}
-
-inline bool isSequenceOfSize(const Node &node, std::size_t size) { return node.IsSequence() and node.size() == size; }
-
-inline void assertSequenceOfSize(const Node &node, std::size_t size) {
-  assertHasValue(node);
-  if (isSequenceOfSize(node, size)) return;
-  throw ParsingError(node, fmt::format("Expected a sequence of size {}", size));
-}
-
-template <typename Key>
-void assertSequenceOfSize(const Node &node, const Key &key, std::size_t size) {
-  assertHasValue(node, key);
-  if (isSequenceOfSize(node[key], size)) return;
-  throw ParsingError(node, fmt::format("Expected a sequence of size {}", size), key);
-}
-
-namespace impl {
-template <typename Value>
-void setTo(const Node &node, Value &value) {
-  try {
-    value = node.as<Value>();
-  } catch (const YAML::Exception &) {  // Gives detailed information
-    throw BadConversionError(node, value);
-  }
-}
-
-inline void setTo(const Node &node, std::vector<bool>::reference value) {
-  bool scalar;
-  setTo(node, scalar);
-  value = scalar;
+  return "";
 }
 
 template <typename T>
-void setTo(const Node &node, std::vector<T> &value);
+T Node::as() const {
+  T result;
+  to(result);
+  return result;
+}
+
+template <typename T>
+T Node::as(const T &default_value) const {
+  return (isDefined() and not isNull()) ? as<T>() : default_value;
+}
+
+template <typename T>
+void Node::to(T &value, bool allow_missing) const {
+  if (allow_missing and (not isDefined() or isNull())) return;
+  throwIf(not isDefined(), "Undefined node");
+  try {
+    Decoder<T>::decode(node_, value);
+  } catch (const YamlError &error) {
+    throwIf(true, error.what());
+  }
+}
+
+template <typename Key>
+Node Node::operator[](const Key &key) const {
+  throwIf(isScalar(), fmt::format("Cannot access key '{}' on a scalar node", key));
+  // Enable chained access to nested nodes even if some intermediate nodes are missing or null
+  if (not hasValue()) return Node(YAML::Node(YAML::NodeType::Undefined), makeChildContext(key));
+  return Node(node_[key], makeChildContext(key));
+}
+
+inline void Node::throwUnless(bool condition, const std::string &reason) const {
+  if (condition) return;
+  std::string what = fmt::format("YamlError: {}.", reason);
+  if (node_) what += fmt::format("\nNode: {}", toString(node_));
+  if (not context_.filename.empty()) {
+    what += fmt::format("\nFile: {}.", context_.filename);
+  } else if (context_.top_node) {
+    what += fmt::format("\nTop-level node: {}", toString(context_.top_node));
+  }
+  if (not context_.keys.empty()) {
+    what += "\nFull path: ";
+    for (const auto &key : context_.keys) {
+      what += fmt::format("[{}]", key);
+    }
+  }
+  throw YamlError(what);
+}
+
+class Node::iterator_value : public Node, public std::pair<Node, Node> {
+ public:
+  iterator_value() = default;
+  explicit iterator_value(Node node) : Node(std::move(node)), std::pair<Node, Node>(Node{}, Node{}) {}
+  explicit iterator_value(Node key, Node value) : Node(), std::pair<Node, Node>(std::move(key), std::move(value)) {}
+};
+
+class Node::iterator {
+ private:
+  struct proxy {
+    explicit proxy(iterator_value value) : value(std::move(value)) {}
+    iterator_value *operator->() { return std::addressof(value); }
+    iterator_value value;
+  };
+
+ public:
+  using iterator_category = std::forward_iterator_tag;
+  using value_type        = iterator_value;
+  using difference_type   = std::ptrdiff_t;
+  using pointer           = value_type *;
+  using reference         = value_type;
+
+  iterator() = default;
+  iterator(Node *parent, YAML::iterator it, std::size_t index = 0)
+      : parent_(parent), it_(std::move(it)), index_(index) {}
+
+  iterator &operator++() {
+    ++it_;
+    ++index_;
+    return *this;
+  }
+  iterator operator++(int) {
+    iterator tmp = *this;
+    ++(*this);
+    return tmp;
+  }
+
+  friend bool operator==(const iterator &lhs, const iterator &rhs) {
+    return lhs.parent_ == rhs.parent_ and lhs.it_ == rhs.it_;
+  }
+  friend bool operator!=(const iterator &lhs, const iterator &rhs) { return !(lhs == rhs); }
+
+  value_type operator*() const {
+    const auto value = *it_;
+    if (value.first.IsDefined() and value.second.IsDefined()) {
+      Node key(value.first, parent_->makeChildContext(value.first));
+      return value_type(std::move(key), Node(value.second, parent_->makeChildContext(value.first)));
+    }
+    return value_type(Node(YAML::Node(value), parent_->makeChildContext(index_)));
+  }
+  proxy operator->() const { return proxy(**this); }
+
+  friend class const_iterator;
+
+ private:
+  Node *parent_ = nullptr;
+  YAML::iterator it_;
+  std::size_t index_ = 0;
+};
+
+class Node::const_iterator {
+ private:
+  struct proxy {
+    explicit proxy(iterator_value value) : value(std::move(value)) {}
+    const iterator_value *operator->() const { return std::addressof(value); }
+    iterator_value value;
+  };
+
+ public:
+  using iterator_category = std::forward_iterator_tag;
+  using value_type        = iterator_value;
+  using difference_type   = std::ptrdiff_t;
+  using pointer           = const value_type *;
+  using reference         = value_type;
+
+  const_iterator() = default;
+  const_iterator(const Node *parent, YAML::const_iterator it, std::size_t index = 0)
+      : parent_(parent), it_(std::move(it)), index_(index) {}
+  const_iterator(const iterator &other) : parent_(other.parent_), it_(other.it_), index_(other.index_) {}
+
+  const_iterator &operator++() {
+    ++it_;
+    ++index_;
+    return *this;
+  }
+  const_iterator operator++(int) {
+    const_iterator tmp = *this;
+    ++(*this);
+    return tmp;
+  }
+
+  friend bool operator==(const const_iterator &lhs, const const_iterator &rhs) {
+    return lhs.parent_ == rhs.parent_ and lhs.it_ == rhs.it_;
+  }
+  friend bool operator!=(const const_iterator &lhs, const const_iterator &rhs) { return !(lhs == rhs); }
+
+  value_type operator*() const {
+    const auto value = *it_;
+    if (value.first.IsDefined() and value.second.IsDefined()) {
+      Node key(value.first, parent_->makeChildContext(value.first));
+      return value_type(std::move(key), Node(value.second, parent_->makeChildContext(value.first)));
+    }
+    return value_type(Node(YAML::Node(value), parent_->makeChildContext(index_)));
+  }
+  proxy operator->() const { return proxy(**this); }
+
+ private:
+  const Node *parent_ = nullptr;
+  YAML::const_iterator it_;
+  std::size_t index_ = 0;
+};
+
+inline Node::iterator Node::begin() { return iterator(this, node_.begin()); }
+inline Node::const_iterator Node::begin() const { return const_iterator(this, node_.begin()); }
+inline Node::iterator Node::end() { return iterator(this, node_.end(), size()); }
+inline Node::const_iterator Node::end() const { return const_iterator(this, node_.end(), size()); }
+inline Node::const_iterator Node::cbegin() const { return begin(); }
+inline Node::const_iterator Node::cend() const { return end(); }
+
+inline Node loadFile(const std::string &path, bool allow_missing = false) {
+  try {
+    YAML::Node node = YAML::LoadFile(path);
+    Node::Context context;
+    context.filename = path;
+    context.top_node = node;
+    return Node(std::move(node), std::move(context));
+  } catch (const YAML::BadFile &error) {
+    if (allow_missing) {
+      Node::Context context;
+      context.filename = path;
+      return Node(YAML::Node(YAML::NodeType::Undefined), std::move(context));
+    }
+    throw BadFileError(fmt::format("Failed to load YAML file '{}': {}.", path, error.what()));
+  }
+}
+
+template <typename T>
+struct Decoder<std::vector<T>> {
+  static void decode(const YAML::Node &node, std::vector<T> &value) {
+    if (node.IsScalar()) {
+      if (value.empty()) value.resize(1);
+      Decoder<T>::decode(node, value.front());
+      for (std::size_t i{1}; i < value.size(); ++i) {
+        value[i] = value.front();
+      }
+      return;
+    }
+
+    if (not node.IsSequence()) throw YamlError("Expected scalar or sequence");
+    if (value.empty()) {
+      value.resize(node.size());
+    } else if (node.size() != value.size()) {
+      throw YamlError(fmt::format("Expected size {}, but got {}", value.size(), node.size()));
+    }
+
+    for (std::size_t i{}; i < node.size(); ++i) {
+      try {
+        Decoder<T>::decode(node[i], value[i]);
+      } catch (const YamlError &error) {
+        throw YamlError(fmt::format("{} at index {}.", error.what(), i));
+      }
+    }
+  }
+};
+
+template <>
+struct Decoder<std::vector<bool>> {
+  static void decode(const YAML::Node &node, std::vector<bool> &value) {
+    if (node.IsScalar()) {
+      if (value.empty()) value.resize(1);
+      bool scalar{};
+      Decoder<bool>::decode(node, scalar);
+      for (std::size_t i{}; i < value.size(); ++i) {
+        value[i] = scalar;
+      }
+      return;
+    }
+
+    if (not node.IsSequence()) throw YamlError("Expected scalar or sequence");
+    if (value.empty()) {
+      value.resize(node.size());
+    } else if (node.size() != value.size()) {
+      throw YamlError(fmt::format("Expected size {}, but got {}", value.size(), node.size()));
+    }
+
+    for (std::size_t i{}; i < node.size(); ++i) {
+      try {
+        bool scalar{};
+        Decoder<bool>::decode(node[i], scalar);
+        value[i] = scalar;
+      } catch (const YamlError &error) {
+        throw YamlError(fmt::format("{} at index {}.", error.what(), i));
+      }
+    }
+  }
+};
+
 template <typename T, std::size_t N>
-void setTo(const Node &node, std::array<T, N> &value);
-template <typename dtype>
-void setTo(const Node &node, range_t<dtype> &value);
-template <typename T, int N>
-void setTo(const Node &node, Eigen::Matrix<T, N, 1> &value);
-template <typename T>
-void setTo(const Node &node, Eigen::Matrix<T, -1, 1> &value);
-template <typename T, int N>
-void setTo(const Node &node, Eigen::Array<T, N, 1> &value);
-template <typename T>
-void setTo(const Node &node, Eigen::Array<T, -1, 1> &value);
+struct Decoder<std::array<T, N>> {
+  static void decode(const YAML::Node &node, std::array<T, N> &value) {
+    if (node.IsScalar()) {
+      T scalar{};
+      Decoder<T>::decode(node, scalar);
+      value.fill(scalar);
+      return;
+    }
+    if (not node.IsSequence()) throw YamlError("Expected scalar or sequence");
+    if (node.size() != N) {
+      throw YamlError(fmt::format("Expected size {}, but got {}", N, node.size()));
+    }
+
+    for (std::size_t i{}; i < N; ++i) {
+      try {
+        Decoder<T>::decode(node[i], value[i]);
+      } catch (const YamlError &error) {
+        throw YamlError(fmt::format("{} at index {}.", error.what(), i));
+      }
+    }
+  }
+};
 
 template <typename T>
-void setTo(const Node &node, std::vector<T> &value) {
-  if (node.IsScalar()) {
-    if (value.empty()) value.resize(1);
-    setTo(node, value.front());
-    for (std::size_t i{1}; i < value.size(); ++i) {
-      value[i] = value.front();
-    }
-    return;
-  }
-
-  if (not node.IsSequence()) {
-    throw ParsingError(node, "Expected scalar or sequence");
-  }
-  if (value.empty()) {
-    value.resize(node.size());
-  } else if (node.size() != value.size()) {
-    throw ParsingError(node, fmt::format("Expected size {}, but got {}", value.size(), node.size()));
-  }
-  for (std::size_t i{}; i < node.size(); ++i) {
-    try {
-      setTo(node[i], value[i]);
-    } catch (const ParsingError &error) {
-      throw error.withParent(node, i);
-    }
-  }
-}
-
-template <typename T, std::size_t N>
-void setTo(const Node &node, std::array<T, N> &value) {
-  static_assert(N != 0, "setTo: Invalid array size (0).");
-  if (node.IsScalar()) {
-    T scalar;
-    setTo(node, scalar);
-    value.fill(scalar);
-    return;
-  }
-
-  assertSequenceOfSize(node, N);
-  for (std::size_t i{}; i < N; ++i) {
-    try {
-      setTo(node[i], value[i]);
-    } catch (const ParsingError &error) {
-      throw error.withParent(node, i);
+struct Decoder<range_t<T>> {
+  static void decode(const YAML::Node &node, range_t<T> &value) {
+    if (node.IsScalar()) {
+      Decoder<T>::decode(node, value.lower());
+      value.upper() = value.lower();
+    } else if (node.IsMap()) {
+      try {
+        Decoder<T>::decode(node["lower"], value.lower());
+      } catch (const YamlError &error) {
+        throw YamlError(fmt::format("{} for 'lower'.", error.what()));
+      }
+      try {
+        Decoder<T>::decode(node["upper"], value.upper());
+      } catch (const YamlError &error) {
+        throw YamlError(fmt::format("{} for 'upper'.", error.what()));
+      }
+    } else if (node.IsSequence() && node.size() == 2) {
+      try {
+        Decoder<T>::decode(node[0], value.lower());
+      } catch (const YamlError &error) {
+        throw YamlError(fmt::format("{} at index {}.", error.what(), 0));
+      }
+      try {
+        Decoder<T>::decode(node[1], value.upper());
+      } catch (const YamlError &error) {
+        throw YamlError(fmt::format("{} at index {}.", error.what(), 1));
+      }
+    } else {
+      throw YamlError(fmt::format("Bad conversion to type '{}'", getTypeName(value)));
     }
   }
-}
-
-template <typename dtype>
-void setTo(const Node &node, range_t<dtype> &value) {
-  if (node.IsScalar()) {
-    setTo(node, value.lower());
-    value.upper() = value.lower();
-  } else if (node.IsMap()) {
-    assertHasValue(node, "lower");
-    assertHasValue(node, "upper");
-    try {
-      setTo(node["lower"], value.lower());
-    } catch (const ParsingError &error) {
-      throw error.withParent(node, "lower");
-    }
-    try {
-      setTo(node["upper"], value.upper());
-    } catch (const ParsingError &error) {
-      throw error.withParent(node, "upper");
-    }
-  } else if (isSequenceOfSize(node, 2)) {
-    try {
-      setTo(node[0], value.lower());
-    } catch (const ParsingError &error) {
-      throw error.withParent(node, 0);
-    }
-    try {
-      setTo(node[1], value.upper());
-    } catch (const ParsingError &error) {
-      throw error.withParent(node, 1);
-    }
-  } else {
-    throw BadConversionError(node, value);
-  }
-}
+};
 
 template <typename T, int N>
-void setTo(const Node &node, Eigen::Matrix<T, N, 1> &value) {
-  std::array<T, N> result;
-  setTo(node, result);
-  value = Eigen::Map<Eigen::Matrix<T, N, 1>>(result.data());
-}
+struct Decoder<Eigen::Matrix<T, N, 1>> {
+  static void decode(const YAML::Node &node, Eigen::Matrix<T, N, 1> &value) {
+    std::array<T, N> result;
+    Decoder<std::array<T, N>>::decode(node, result);
+    value = Eigen::Map<Eigen::Matrix<T, N, 1>>(result.data());
+  }
+};
 
 template <typename T>
-void setTo(const Node &node, Eigen::Matrix<T, -1, 1> &value) {
-  std::vector<T> result;
-  if (value.size() != 0) result.resize(value.size());
-  setTo(node, result);
-  value = Eigen::Map<Eigen::Matrix<T, -1, 1>>(result.data(), result.size());
-}
+struct Decoder<Eigen::Matrix<T, -1, 1>> {
+  static void decode(const YAML::Node &node, Eigen::Matrix<T, -1, 1> &value) {
+    std::vector<T> result;
+    if (value.size() != 0) result.resize(value.size());
+    Decoder<std::vector<T>>::decode(node, result);
+    value = Eigen::Map<Eigen::Matrix<T, -1, 1>>(result.data(), result.size());
+  }
+};
 
 template <typename T, int N>
-void setTo(const Node &node, Eigen::Array<T, N, 1> &value) {
-  std::array<T, N> result;
-  setTo(node, result);
-  value = Eigen::Map<Eigen::Array<T, N, 1>>(result.data());
-}
+struct Decoder<Eigen::Array<T, N, 1>> {
+  static void decode(const YAML::Node &node, Eigen::Array<T, N, 1> &value) {
+    std::array<T, N> result;
+    Decoder<std::array<T, N>>::decode(node, result);
+    value = Eigen::Map<Eigen::Array<T, N, 1>>(result.data());
+  }
+};
 
 template <typename T>
-void setTo(const Node &node, Eigen::Array<T, -1, 1> &value) {
-  std::vector<T> result;
-  if (value.size() != 0) result.resize(value.size());
-  setTo(node, result);
-  value = Eigen::Map<Eigen::Array<T, -1, 1>>(result.data(), result.size());
-}
+struct Decoder<Eigen::Array<T, -1, 1>> {
+  static void decode(const YAML::Node &node, Eigen::Array<T, -1, 1> &value) {
+    std::vector<T> result;
+    if (value.size() != 0) result.resize(value.size());
+    Decoder<std::vector<T>>::decode(node, result);
+    value = Eigen::Map<Eigen::Array<T, -1, 1>>(result.data(), result.size());
+  }
+};
 
 #if __cplusplus >= 201703L
 template <typename T>
-void setTo(const Node &node, std::optional<T> &value) {
-  if (node.IsNull()) {
-    value.reset();
-    return;
-  }
-  T inner_value;
-  setTo(node, inner_value);
-  value = inner_value;
-}
-#endif
-}  // namespace impl
-
-template <typename Value>
-void setTo(const Node &node, Value &value) {
-  assertDefined(node);
-  impl::setTo(node, value);
-}
-
-template <typename Value, typename Key>
-void setTo(const Node &node, const Key &key, Value &value) {
-  assertDefined(node, key);
-  try {
-    impl::setTo(node[key], value);
-  } catch (const ParsingError &error) {
-    throw error.withParent(node, key);
-  }
-}
-
-template <typename Value>
-void setIf(const Node &node, Value &value) {
-  if (isDefined(node)) impl::setTo(node, value);
-}
-
-template <typename Value, typename Key>
-void setIf(const Node &node, const Key &key, Value &value) {
-  if (isDefined(node, key)) {
-    try {
-      impl::setTo(node[key], value);
-    } catch (const ParsingError &error) {
-      throw error.withParent(node, key);
+struct Decoder<std::optional<T>> {
+  static void decode(const YAML::Node &node, std::optional<T> &value) {
+    if (node.IsNull()) {
+      value.reset();
+      return;
     }
+    T inner_value{};
+    Decoder<T>::decode(node, inner_value);
+    value = inner_value;
   }
-}
-
-template <typename Key>
-Node getItem(const Node &node, const Key &key) {
-  assertDefined(node, key);
-  return node[key];
-}
-
-template <typename Value>
-Value readAs(const Node &node) {
-  Value value;
-  setTo(node, value);
-  return value;
-}
-
-template <typename Value, typename Key>
-Value readAs(const Node &node, const Key &key) {
-  Value value;
-  setTo(node, key, value);
-  return value;
-}
-
-template <typename Value>
-Value readIf(const Node &node, const Value &default_value) {
-  return isDefined(node) ? readAs<Value>(node) : default_value;
-}
-
-template <typename Value, typename Key>
-Value readIf(const Node &node, const Key &key, const Value &default_value) {
-  return isDefined(node, key) ? readAs<Value>(node, key) : default_value;
-}
+};
+#endif
 }  // namespace yml
 }  // namespace llu
 
