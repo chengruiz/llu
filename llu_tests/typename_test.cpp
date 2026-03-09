@@ -5,12 +5,18 @@
 struct TypeA {};
 class TypeB {};
 
-TEST(LLU_TYPENAME_TEST, LLU_TYPENAME_TEST) {
-  ASSERT_EQ(llu::getTypeName<int>(), "int") << "Type name of int should be 'int'";
-  ASSERT_EQ(llu::getTypeName<float>(), "float") << "Type name of float should be 'float'";
-  ASSERT_EQ(llu::getTypeName<double>(), "double") << "Type name of double should be 'double'";
-  ASSERT_EQ(llu::getTypeName<TypeA>(), "TypeA") << "Type name of TypeA should be 'TypeA'";
-  ASSERT_EQ(llu::getTypeName<TypeB>(), "TypeB") << "Type name of TypeB should be 'TypeB'";
-  ASSERT_EQ(llu::getTypeName(TypeA{}), "TypeA") << "Type name of TypeA{} should be 'TypeA'";
-  ASSERT_EQ(llu::getTypeName(TypeB{}), "TypeB") << "Type name of TypeB{} should be 'TypeB'";
+TEST(LLU_TYPENAME_TEST, TemplateOverloadReturnsDemangledBuiltinNames) {
+  EXPECT_EQ(llu::getTypeName<int>(), "int");
+  EXPECT_EQ(llu::getTypeName<float>(), "float");
+  EXPECT_EQ(llu::getTypeName<double>(), "double");
+}
+
+TEST(LLU_TYPENAME_TEST, TemplateOverloadReturnsDemangledUserTypeNames) {
+  EXPECT_EQ(llu::getTypeName<TypeA>(), "TypeA");
+  EXPECT_EQ(llu::getTypeName<TypeB>(), "TypeB");
+}
+
+TEST(LLU_TYPENAME_TEST, ValueOverloadReturnsDemangledRuntimeTypeNames) {
+  EXPECT_EQ(llu::getTypeName(TypeA{}), "TypeA");
+  EXPECT_EQ(llu::getTypeName(TypeB{}), "TypeB");
 }

@@ -1,74 +1,127 @@
 #include <gtest/gtest.h>
 
+#include <string>
+#include <vector>
+
 #include <llu/env.h>
 
-TEST(LLU_ENV_TEST, LLU_ENV_TEST) {
+namespace {
+template <typename Callback>
+std::string captureWhat(Callback &&callback) {
+  try {
+    callback();
+  } catch (const std::exception &error) {
+    return error.what();
+  }
+  return {};
+}
+}  // namespace
+
+TEST(LLU_ENV_TEST, CaseConversionHelpersTransformCopiesAndInPlaceValues) {
+  std::string lower = "AbC-123";
+  std::string upper = "xYz-123";
+
+  EXPECT_EQ(llu::toLowercase("MiXeD"), "mixed");
+  EXPECT_EQ(llu::toUppercase("MiXeD"), "MIXED");
+
+  llu::toLowercaseInplace(lower);
+  llu::toUppercaseInplace(upper);
+
+  EXPECT_EQ(lower, "abc-123");
+  EXPECT_EQ(upper, "XYZ-123");
+}
+
+TEST(LLU_ENV_TEST, MissingVariablesReturnFalseForSupportedTypes) {
   std::string str_val;
-  long int_val;
+  long int_val = 0;
+  bool bool_val = false;
+  std::vector<std::string> paths;
 
-  setenv("A_VAR", "123", 1);
+  EXPECT_FALSE(llu::getenv("LLU_ENV_TEST_MISSING_STRING", str_val));
+  EXPECT_FALSE(llu::getenv("LLU_ENV_TEST_MISSING_INTEGER", int_val));
+  EXPECT_FALSE(llu::getenv("LLU_ENV_TEST_MISSING_BOOL", bool_val));
+  EXPECT_FALSE(llu::getenv("LLU_ENV_TEST_MISSING_PATHS", paths));
+}
 
-  ASSERT_FALSE(llu::getenv("NOT_A_VAR", str_val)) << "Expected not a variable";
-  ASSERT_FALSE(llu::getenv("NOT_A_VAR", int_val)) << "Expected not a variable";
+TEST(LLU_ENV_TEST, StringAndIntegerDecodersReadPresentVariables) {
+  std::string str_val;
+  long int_val = 0;
 
-  ASSERT_TRUE(llu::getenv("HOME", str_val)) << "Expected a variable";
-  ASSERT_TRUE(llu::getenv("A_VAR", int_val)) << "Expected a variable";
-  ASSERT_EQ(int_val, 123) << "Expected 123";
+  ASSERT_EQ(::setenv("LLU_ENV_TEST_STRING", "value", 1), 0);
+  ASSERT_EQ(::setenv("LLU_ENV_TEST_INTEGER", "123", 1), 0);
 
-  try {
-    llu::getenv("HOME", int_val);
-    ASSERT_TRUE(false) << "Expected an exception";
-  } catch (const std::exception &e) {}
+  ASSERT_TRUE(llu::getenv("LLU_ENV_TEST_STRING", str_val));
+  ASSERT_TRUE(llu::getenv("LLU_ENV_TEST_INTEGER", int_val));
 
-  bool bool_val;
-  ASSERT_FALSE(llu::getenv("NOT_A_VAR", bool_val)) << "Expected not a variable";
+  EXPECT_EQ(str_val, "value");
+  EXPECT_EQ(int_val, 123);
+}
 
-  setenv("TRUE1", "1", 1);
-  setenv("TRUE2", "true", 1);
-  setenv("TRUE3", "yes", 1);
-  setenv("TRUE4", "on", 1);
-  setenv("FALSE1", "0", 1);
-  setenv("FALSE2", "false", 1);
-  setenv("FALSE3", "no", 1);
-  setenv("FALSE4", "off", 1);
+TEST(LLU_ENV_TEST, BoolDecoderAcceptsCommonTruthyAndFalseyValues) {
+  bool bool_val = false;
 
-  ASSERT_TRUE(llu::getenv("TRUE1", bool_val)) << "Expected TRUE1 to be set";
-  ASSERT_TRUE(bool_val);
-  ASSERT_TRUE(llu::getenv("TRUE2", bool_val)) << "Expected TRUE2 to be set";
-  ASSERT_TRUE(bool_val);
-  ASSERT_TRUE(llu::getenv("TRUE3", bool_val)) << "Expected TRUE3 to be set";
-  ASSERT_TRUE(bool_val);
-  ASSERT_TRUE(llu::getenv("TRUE4", bool_val)) << "Expected TRUE4 to be set";
-  ASSERT_TRUE(bool_val);
+  ASSERT_EQ(::setenv("LLU_ENV_TEST_TRUE_1", "1", 1), 0);
+  ASSERT_EQ(::setenv("LLU_ENV_TEST_TRUE_TRUE", "true", 1), 0);
+  ASSERT_EQ(::setenv("LLU_ENV_TEST_TRUE_YES", "yes", 1), 0);
+  ASSERT_EQ(::setenv("LLU_ENV_TEST_TRUE_ON", "on", 1), 0);
+  ASSERT_EQ(::setenv("LLU_ENV_TEST_FALSE_0", "0", 1), 0);
+  ASSERT_EQ(::setenv("LLU_ENV_TEST_FALSE_FALSE", "false", 1), 0);
+  ASSERT_EQ(::setenv("LLU_ENV_TEST_FALSE_NO", "no", 1), 0);
+  ASSERT_EQ(::setenv("LLU_ENV_TEST_FALSE_OFF", "off", 1), 0);
 
-  ASSERT_TRUE(llu::getenv("FALSE1", bool_val)) << "Expected FALSE1 to be set";
-  ASSERT_FALSE(bool_val);
-  ASSERT_TRUE(llu::getenv("FALSE2", bool_val)) << "Expected FALSE2 to be set";
-  ASSERT_FALSE(bool_val);
-  ASSERT_TRUE(llu::getenv("FALSE3", bool_val)) << "Expected FALSE3 to be set";
-  ASSERT_FALSE(bool_val);
-  ASSERT_TRUE(llu::getenv("FALSE4", bool_val)) << "Expected FALSE4 to be set";
-  ASSERT_FALSE(bool_val);
+  ASSERT_TRUE(llu::getenv("LLU_ENV_TEST_TRUE_1", bool_val));
+  EXPECT_TRUE(bool_val);
+  ASSERT_TRUE(llu::getenv("LLU_ENV_TEST_TRUE_TRUE", bool_val));
+  EXPECT_TRUE(bool_val);
+  ASSERT_TRUE(llu::getenv("LLU_ENV_TEST_TRUE_YES", bool_val));
+  EXPECT_TRUE(bool_val);
+  ASSERT_TRUE(llu::getenv("LLU_ENV_TEST_TRUE_ON", bool_val));
+  EXPECT_TRUE(bool_val);
 
-  setenv("BAD_BOOL", "maybe", 1);
-  try {
-    llu::getenv("BAD_BOOL", bool_val);
-    ASSERT_TRUE(false) << "Expected an exception";
-  } catch (const std::exception &e) {}
+  ASSERT_TRUE(llu::getenv("LLU_ENV_TEST_FALSE_0", bool_val));
+  EXPECT_FALSE(bool_val);
+  ASSERT_TRUE(llu::getenv("LLU_ENV_TEST_FALSE_FALSE", bool_val));
+  EXPECT_FALSE(bool_val);
+  ASSERT_TRUE(llu::getenv("LLU_ENV_TEST_FALSE_NO", bool_val));
+  EXPECT_FALSE(bool_val);
+  ASSERT_TRUE(llu::getenv("LLU_ENV_TEST_FALSE_OFF", bool_val));
+  EXPECT_FALSE(bool_val);
+}
 
-  setenv("MY_PATHS1", ":/a:/b::/c:", 1);
-  setenv("MY_PATHS2", "", 1);
-  setenv("MY_PATHS3", ":::::", 1);
+TEST(LLU_ENV_TEST, BoolDecoderRejectsUnsupportedValues) {
+  bool bool_val = false;
+  ASSERT_EQ(::setenv("LLU_ENV_TEST_BAD_BOOL", "maybe", 1), 0);
+
+  const auto message = captureWhat([&] { static_cast<void>(llu::getenv("LLU_ENV_TEST_BAD_BOOL", bool_val)); });
+
+  EXPECT_NE(message.find("cannot be converted to a boolean"), std::string::npos);
+  EXPECT_NE(message.find("LLU_ENV_TEST_BAD_BOOL"), std::string::npos);
+}
+
+TEST(LLU_ENV_TEST, IntegerDecoderRejectsNonNumericValues) {
+  long int_val = 0;
+  ASSERT_EQ(::setenv("LLU_ENV_TEST_BAD_INTEGER", "12x", 1), 0);
+
+  const auto message = captureWhat([&] { static_cast<void>(llu::getenv("LLU_ENV_TEST_BAD_INTEGER", int_val)); });
+
+  EXPECT_NE(message.find("cannot be converted to a integer"), std::string::npos);
+  EXPECT_NE(message.find("LLU_ENV_TEST_BAD_INTEGER"), std::string::npos);
+}
+
+TEST(LLU_ENV_TEST, PathDecoderSkipsEmptyColonSeparatedSegments) {
   std::vector<std::string> paths1;
   std::vector<std::string> paths2;
   std::vector<std::string> paths3;
-  ASSERT_TRUE(llu::getenv("MY_PATHS1", paths1)) << "Expected a variable";
-  ASSERT_TRUE(llu::getenv("MY_PATHS2", paths2)) << "Expected a variable";
-  ASSERT_TRUE(llu::getenv("MY_PATHS3", paths3)) << "Expected a variable";
-  ASSERT_EQ(paths1.size(), 3) << "Expected 4 paths";
-  ASSERT_EQ(paths1[0], "/a") << "Expected /a";
-  ASSERT_EQ(paths1[1], "/b") << "Expected /b";
-  ASSERT_EQ(paths1[2], "/c") << "Expected /c";
-  ASSERT_EQ(paths2.size(), 0) << "Expected 0 paths";
-  ASSERT_EQ(paths3.size(), 0) << "Expected 5 paths";
+
+  ASSERT_EQ(::setenv("LLU_ENV_TEST_PATHS_FILLED", ":/a:/b::/c:", 1), 0);
+  ASSERT_EQ(::setenv("LLU_ENV_TEST_PATHS_EMPTY", "", 1), 0);
+  ASSERT_EQ(::setenv("LLU_ENV_TEST_PATHS_DELIMS", ":::::", 1), 0);
+
+  ASSERT_TRUE(llu::getenv("LLU_ENV_TEST_PATHS_FILLED", paths1));
+  ASSERT_TRUE(llu::getenv("LLU_ENV_TEST_PATHS_EMPTY", paths2));
+  ASSERT_TRUE(llu::getenv("LLU_ENV_TEST_PATHS_DELIMS", paths3));
+
+  EXPECT_EQ(paths1, (std::vector<std::string>{"/a", "/b", "/c"}));
+  EXPECT_TRUE(paths2.empty());
+  EXPECT_TRUE(paths3.empty());
 }

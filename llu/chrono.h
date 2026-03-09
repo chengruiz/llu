@@ -1,9 +1,12 @@
 #ifndef LLU_CHRONO_H_
 #define LLU_CHRONO_H_
 
+#include <algorithm>
 #include <chrono>
+#include <limits>
 #include <thread>
 
+#include <fmt/chrono.h>
 #include <fmt/core.h>
 
 #include <llu/math.h>

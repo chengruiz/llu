@@ -1,178 +1,163 @@
 #include <gtest/gtest.h>
 
+#include <vector>
+
 #include <llu/ring.h>
 
-TEST(LLU_RING_TEST, LLU_RING_SIZE_TEST) {
-  llu::RingBuffer<int> q(3);
-  ASSERT_TRUE(q.empty());
-  ASSERT_FALSE(q.full());
-  ASSERT_EQ(q.size(), 0);
-  q.push_back(1);
-  ASSERT_FALSE(q.empty());
-  ASSERT_FALSE(q.full());
-  ASSERT_EQ(q.size(), 1);
-  q.push_back(2);
-  ASSERT_FALSE(q.empty());
-  ASSERT_FALSE(q.full());
-  ASSERT_EQ(q.size(), 2);
-  q.push_back(3);
-  ASSERT_FALSE(q.empty());
-  ASSERT_TRUE(q.full());
-  ASSERT_EQ(q.size(), 3);
-  q.push_back(4);
-  ASSERT_FALSE(q.empty());
-  ASSERT_TRUE(q.full());
-  ASSERT_EQ(q.size(), 3);
-  q.clear();
-  ASSERT_TRUE(q.empty());
-  ASSERT_FALSE(q.full());
-  ASSERT_EQ(q.size(), 0);
-}
-
-TEST(LLU_RING_TEST, LLU_RING_DATA_TEST) {
-  llu::RingBuffer<int> q(3);
-  try {
-    auto front = q.front();
-    ASSERT_TRUE(false) << "UnderflowError exception should be thrown";
-  } catch (llu::UnderflowError &e) {}
-  try {
-    auto back = q.back();
-    ASSERT_TRUE(false) << "UnderflowError exception should be thrown";
-  } catch (llu::UnderflowError &e) {}
-  try {
-    auto item = q.at(0);
-    ASSERT_TRUE(false) << "IndexError exception should be thrown";
-  } catch (llu::IndexError &e) {}
-
-  q.push_back(0);
-  q.push_back(1);
-  q.emplace_back(2);
-  q.emplace_back(3);
-  q.push_back(4);
-  ASSERT_EQ(q.front(), 2);
-  ASSERT_EQ(q.back(), 4);
-  ASSERT_EQ(q.at(0), 2);
-  ASSERT_EQ(q.at(1), 3);
-  ASSERT_EQ(q.at(2), 4);
-  ASSERT_EQ(q.at(-1), 4);
-  ASSERT_EQ(q.at(-2), 3);
-  ASSERT_EQ(q.at(-3), 2);
-  try {
-    auto item = q.at(3);
-    ASSERT_TRUE(false) << "IndexError exception should be thrown";
-  } catch (llu::IndexError &e) {}
-  try {
-    auto item = q.at(-4);
-    ASSERT_TRUE(false) << "IndexError exception should be thrown";
-  } catch (llu::IndexError &e) {}
-
-  ASSERT_EQ(q.at(0, -1), 2);
-  ASSERT_EQ(q.at(1, -1), 3);
-  ASSERT_EQ(q.at(2, -1), 4);
-  ASSERT_EQ(q.at(3, -1), -1);
-  ASSERT_EQ(q.at(4, -1), -1);
-  ASSERT_EQ(q.at(-1, -1), 4);
-  ASSERT_EQ(q.at(-2, -1), 3);
-  ASSERT_EQ(q.at(-3, -1), 2);
-  ASSERT_EQ(q.at(-4, -1), -1);
-  ASSERT_EQ(q.at(-5, -1), -1);
-}
-
-TEST(LLU_RING_TEST, LLU_RING_ALLOCATE_TEST) {
-  llu::RingBuffer<int> q;
-  q.allocate(3);
-  q.push_back(1);
-  q.push_back(2);
-  q.push_back(3);
-  q.push_back(4);
-
-  q.allocate(2);
-  ASSERT_EQ(q.size(), 2);
-  ASSERT_EQ(q.front(), 3);
-  ASSERT_EQ(q.back(), 4);
-}
-
-TEST(LLU_RING_TEST, LLU_RING_MODIFIER_TEST) {
-  llu::RingBuffer<int> q(3);
-  q.push_back(1);
-  q.push_back(2);
-  q.push_back(3);
-
-  q.pop_front();
-  ASSERT_EQ(q.size(), 2);
-  ASSERT_EQ(q.front(), 2);
-  ASSERT_EQ(q.back(), 3);
-
-  q.push_front(0);
-  ASSERT_EQ(q.size(), 3);
-  ASSERT_EQ(q.front(), 0);
-  ASSERT_EQ(q.back(), 3);
-
-  q.pop_back();
-  ASSERT_EQ(q.size(), 2);
-  ASSERT_EQ(q.front(), 0);
-  ASSERT_EQ(q.back(), 2);
-
-  q.push_front(5);
-  q.push_front(6);
-  ASSERT_EQ(q.size(), 3);
-  ASSERT_EQ(q.front(), 6);
-  ASSERT_EQ(q.back(), 0);
-}
-
-TEST(LLU_RING_TEST, LLU_RING_ITERATOR_TEST) {
-  llu::RingBuffer<int> q(3);
-  q.push_back(1);
-  q.push_back(2);
-  q.push_back(3);
-
-  std::vector<int> v;
-  for (auto x : q) {
-    v.push_back(x);
+namespace {
+std::vector<int> toVector(const llu::RingBuffer<int> &buffer) {
+  std::vector<int> values;
+  for (int value : buffer) {
+    values.push_back(value);
   }
-  ASSERT_EQ(v.size(), 3);
-  ASSERT_EQ(v[0], 1);
-  ASSERT_EQ(v[1], 2);
-  ASSERT_EQ(v[2], 3);
+  return values;
 }
 
-TEST(LLU_RING_TEST, LLU_RING_CONST_ITERATOR_TEST) {
-  llu::RingBuffer<int> q(3);
-  q.push_back(1);
-  q.push_back(2);
-  q.push_back(3);
-
-  std::vector<int> v;
-  for (auto it = q.cbegin(); it != q.cend(); ++it) {
-    v.push_back(*it);
+std::vector<int> toReverseVector(const llu::RingBuffer<int> &buffer) {
+  std::vector<int> values;
+  for (auto it = buffer.crbegin(); it != buffer.crend(); ++it) {
+    values.push_back(*it);
   }
-  ASSERT_EQ(v.size(), 3);
-  ASSERT_EQ(v[0], 1);
-  ASSERT_EQ(v[1], 2);
-  ASSERT_EQ(v[2], 3);
+  return values;
+}
+}  // namespace
+
+TEST(LLU_RING_TEST, UnallocatedOperationsThrowMeaningfulExceptions) {
+  llu::RingBuffer<int> buffer;
+
+  EXPECT_THROW(buffer.push_back(1), llu::NotAllocatedError);
+  EXPECT_THROW(buffer.push_front(1), llu::NotAllocatedError);
+  EXPECT_THROW(buffer.fill(1), llu::NotAllocatedError);
 }
 
-TEST(LLU_RING_TEST, LLU_RING_REVERSE_ITERATOR_TEST) {
-  llu::RingBuffer<int> q(3);
-  q.push_back(1);
-  q.push_back(2);
-  q.push_back(3);
+TEST(LLU_RING_TEST, SizeStateTracksPushBacksAndOverwriteBehavior) {
+  llu::RingBuffer<int> buffer(3);
 
-  std::vector<int> v;
-  for (auto it = q.rbegin(); it != q.rend(); ++it) {
-    v.push_back(*it);
-  }
-  ASSERT_EQ(v.size(), 3);
-  ASSERT_EQ(v[0], 3);
-  ASSERT_EQ(v[1], 2);
-  ASSERT_EQ(v[2], 1);
+  EXPECT_TRUE(buffer.empty());
+  EXPECT_FALSE(buffer.full());
+  EXPECT_EQ(buffer.size(), 0u);
 
-  v.clear();
-  for (auto it = q.crbegin(); it != q.crend(); ++it) {
-    v.push_back(*it);
-  }
-  ASSERT_EQ(v.size(), 3);
-  ASSERT_EQ(v[0], 3);
-  ASSERT_EQ(v[1], 2);
-  ASSERT_EQ(v[2], 1);
+  buffer.push_back(1);
+  buffer.push_back(2);
+  EXPECT_FALSE(buffer.empty());
+  EXPECT_FALSE(buffer.full());
+  EXPECT_EQ(buffer.size(), 2u);
+
+  buffer.push_back(3);
+  EXPECT_TRUE(buffer.full());
+  EXPECT_EQ(buffer.size(), 3u);
+
+  buffer.push_back(4);
+  EXPECT_TRUE(buffer.full());
+  EXPECT_EQ(buffer.size(), 3u);
+  EXPECT_EQ(toVector(buffer), (std::vector<int>{2, 3, 4}));
+
+  buffer.clear();
+  EXPECT_TRUE(buffer.empty());
+  EXPECT_FALSE(buffer.full());
+  EXPECT_EQ(buffer.size(), 0u);
+}
+
+TEST(LLU_RING_TEST, FrontBackAndAtSupportPositiveAndNegativeIndices) {
+  llu::RingBuffer<int> buffer(3);
+
+  EXPECT_THROW(static_cast<void>(buffer.front()), llu::UnderflowError);
+  EXPECT_THROW(static_cast<void>(buffer.back()), llu::UnderflowError);
+  EXPECT_THROW(static_cast<void>(buffer.at(0)), llu::IndexError);
+
+  buffer.push_back(0);
+  buffer.push_back(1);
+  buffer.emplace_back(2);
+  buffer.emplace_back(3);
+  buffer.push_back(4);
+
+  EXPECT_EQ(buffer.front(), 2);
+  EXPECT_EQ(buffer.back(), 4);
+  EXPECT_EQ(buffer.at(0), 2);
+  EXPECT_EQ(buffer.at(1), 3);
+  EXPECT_EQ(buffer.at(2), 4);
+  EXPECT_EQ(buffer.at(-1), 4);
+  EXPECT_EQ(buffer.at(-2), 3);
+  EXPECT_EQ(buffer.at(-3), 2);
+  EXPECT_THROW(static_cast<void>(buffer.at(3)), llu::IndexError);
+  EXPECT_THROW(static_cast<void>(buffer.at(-4)), llu::IndexError);
+
+  EXPECT_EQ(buffer.at(0, -1), 2);
+  EXPECT_EQ(buffer.at(1, -1), 3);
+  EXPECT_EQ(buffer.at(2, -1), 4);
+  EXPECT_EQ(buffer.at(3, -1), -1);
+  EXPECT_EQ(buffer.at(-1, -1), 4);
+  EXPECT_EQ(buffer.at(-3, -1), 2);
+  EXPECT_EQ(buffer.at(-5, -1), -1);
+}
+
+TEST(LLU_RING_TEST, AllocateKeepsTheMostRecentValuesAndResetDropsCapacity) {
+  llu::RingBuffer<int> buffer;
+  buffer.allocate(3);
+  buffer.push_back(1);
+  buffer.push_back(2);
+  buffer.push_back(3);
+  buffer.push_back(4);
+
+  buffer.allocate(2);
+  EXPECT_EQ(buffer.size(), 2u);
+  EXPECT_EQ(toVector(buffer), (std::vector<int>{3, 4}));
+
+  buffer.reset();
+  EXPECT_EQ(buffer.capacity(), 0u);
+  EXPECT_TRUE(buffer.empty());
+  EXPECT_THROW(buffer.push_back(5), llu::NotAllocatedError);
+}
+
+TEST(LLU_RING_TEST, PushFrontAndPopOperationsUpdateBothEnds) {
+  llu::RingBuffer<int> buffer(3);
+  buffer.push_back(1);
+  buffer.push_back(2);
+  buffer.push_back(3);
+
+  buffer.pop_front();
+  EXPECT_EQ(toVector(buffer), (std::vector<int>{2, 3}));
+
+  buffer.push_front(0);
+  EXPECT_EQ(toVector(buffer), (std::vector<int>{0, 2, 3}));
+
+  buffer.pop_back();
+  EXPECT_EQ(toVector(buffer), (std::vector<int>{0, 2}));
+
+  buffer.push_front(5);
+  buffer.push_front(6);
+  EXPECT_EQ(buffer.front(), 6);
+  EXPECT_EQ(buffer.back(), 0);
+  EXPECT_EQ(toVector(buffer), (std::vector<int>{6, 5, 0}));
+}
+
+TEST(LLU_RING_TEST, FillPopulatesTheEntireAllocatedBuffer) {
+  llu::RingBuffer<int> buffer(4);
+
+  buffer.fill(7);
+
+  EXPECT_TRUE(buffer.full());
+  EXPECT_EQ(buffer.size(), 4u);
+  EXPECT_EQ(toVector(buffer), (std::vector<int>{7, 7, 7, 7}));
+}
+
+TEST(LLU_RING_TEST, IteratorsTraverseForwardAndReverseAndSupportRandomAccess) {
+  llu::RingBuffer<int> buffer(3);
+  buffer.push_back(1);
+  buffer.push_back(2);
+  buffer.push_back(3);
+
+  auto it = buffer.begin();
+  EXPECT_EQ(*it, 1);
+  EXPECT_EQ(it[1], 2);
+  EXPECT_EQ(*(it + 2), 3);
+  EXPECT_EQ(buffer.end() - buffer.begin(), 3);
+
+  const auto &const_buffer = buffer;
+  auto cit = const_buffer.cbegin();
+  EXPECT_EQ(*cit, 1);
+  EXPECT_EQ(cit[2], 3);
+
+  EXPECT_EQ(toVector(buffer), (std::vector<int>{1, 2, 3}));
+  EXPECT_EQ(toReverseVector(buffer), (std::vector<int>{3, 2, 1}));
 }

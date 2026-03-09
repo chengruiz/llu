@@ -131,7 +131,6 @@ class Node {
   inline void assertHasValue() const { throwIf(not hasValue(), "Expected a value"); }
   template <typename Key, typename... Keys>
   inline void assertHasValue(const Key &key, const Keys &...keys) const {
-    assertIterable();
     throwUnless(operator[](key).hasValue(), fmt::format("Expected key '{}' to have a value", key));
     assertHasValue(keys...);
   }

@@ -157,7 +157,7 @@ TEST(LLU_YAML_TEST, KeySetAssertionsHandleFalseyValuesAndConflicts) {
   EXPECT_NE(iterable_message.find("[scalar]"), std::string::npos);
 
   const auto missing_value_message = captureWhat([&] { root["map"].assertHasValue("flag", "missing"); });
-  EXPECT_NE(missing_value_message.find("Expected a value for key 'missing'"), std::string::npos);
+  EXPECT_NE(missing_value_message.find("Expected key 'missing' to have a value"), std::string::npos);
   EXPECT_NE(missing_value_message.find("[map]"), std::string::npos);
 
   const auto conflict_message = captureWhat([&] { root["map"].assertMutuallyExclusive({"primary", "secondary"}); });

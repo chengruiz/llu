@@ -2,6 +2,7 @@
 #define LLU_ENV_H_
 
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <string>
 #include <vector>
