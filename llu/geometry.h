@@ -7,6 +7,7 @@
 #include <Eigen/Dense>
 
 #include <llu/eigen.h>
+#include <llu/math.h>
 #include <llu/macro.h>
 
 namespace llu {
@@ -47,6 +48,7 @@ class Quaternion {
 
   [[nodiscard]] Quaternion operator*(const Quaternion &other) const;
   [[nodiscard]] Vec3t operator*(const Vec3t &vec) const;
+  [[nodiscard]] Quaternion slerp(const Quaternion &other, T t) const;
   [[nodiscard]] bool isApprox(const Quaternion &other, T prec) const;
 
  private:
@@ -109,32 +111,6 @@ auto Quaternion<T>::fromMatrix(cMat3t mat) -> Quaternion {
 }
 
 template <typename T>
-auto Quaternion<T>::operator*=(T coef) -> Quaternion & {
-  data_[0] *= coef;
-  data_[1] *= coef;
-  data_[2] *= coef;
-  data_[3] *= coef;
-  return *this;
-}
-
-template <typename T>
-auto Quaternion<T>::operator*(const Quaternion &other) const -> Quaternion {
-  return {
-      w() * other.w() - x() * other.x() - y() * other.y() - z() * other.z(),
-      w() * other.x() + x() * other.w() + y() * other.z() - z() * other.y(),
-      w() * other.y() - x() * other.z() + y() * other.w() + z() * other.x(),
-      w() * other.z() + x() * other.y() - y() * other.x() + z() * other.w(),
-  };
-}
-
-template <typename T>
-bool Quaternion<T>::isApprox(const Quaternion &other, T prec) const {
-  Vec4t coeffs1 = coeffs();
-  Vec4t coeffs2 = other.coeffs();
-  return coeffs1.isApprox(coeffs2, prec) or coeffs1.isApprox(-coeffs2, prec);
-}
-
-template <typename T>
 auto Quaternion<T>::eulerAngles() const -> Vec3t {
   return {
       std::atan2(2 * (w() * x() + y() * z()), 1 - 2 * (x() * x() + y() * y())),
@@ -159,9 +135,71 @@ auto Quaternion<T>::matrix() const -> Mat3t {
 }
 
 template <typename T>
+auto Quaternion<T>::operator*=(T coef) -> Quaternion & {
+  data_[0] *= coef;
+  data_[1] *= coef;
+  data_[2] *= coef;
+  data_[3] *= coef;
+  return *this;
+}
+
+template <typename T>
+auto Quaternion<T>::operator*(const Quaternion &other) const -> Quaternion {
+  return {
+      w() * other.w() - x() * other.x() - y() * other.y() - z() * other.z(),
+      w() * other.x() + x() * other.w() + y() * other.z() - z() * other.y(),
+      w() * other.y() - x() * other.z() + y() * other.w() + z() * other.x(),
+      w() * other.z() + x() * other.y() - y() * other.x() + z() * other.w(),
+  };
+}
+
+template <typename T>
 auto Quaternion<T>::operator*(const Vec3t &vec) const -> Vec3t {
   Vec3t u{x(), y(), z()};
   return 2 * u.dot(vec) * u + (w() * w() - u.dot(u)) * vec + 2 * w() * u.cross(vec);
+}
+
+template <typename T>
+auto Quaternion<T>::slerp(const Quaternion &other, T t) const -> Quaternion {
+  Vec4t q1 = coeffs();
+  Vec4t q2 = other.coeffs();
+
+  T dot = q1.dot(q2);
+  if (dot < 0) {
+    q2  = -q2;
+    dot = -dot;
+  }
+
+  dot = clamp(dot, static_cast<T>(-1), static_cast<T>(1));
+
+  // If quaternions are very close, use normalized lerp to avoid numerical issues.
+  constexpr T kDotThreshold = static_cast<T>(0.9995);
+  if (dot > kDotThreshold) {
+    Vec4t blended = (static_cast<T>(1) - t) * q1 + t * q2;
+    return Quaternion{blended[0], blended[1], blended[2], blended[3]};
+  }
+
+  T theta     = std::acos(dot);
+  T sin_theta = std::sin(theta);
+
+  // Degenerate case safeguard.
+  if (std::abs(sin_theta) < static_cast<T>(1e-8)) {
+    Vec4t blended = (static_cast<T>(1) - t) * q1 + t * q2;
+    return Quaternion{blended[0], blended[1], blended[2], blended[3]};
+  }
+
+  T w1      = std::sin((static_cast<T>(1) - t) * theta) / sin_theta;
+  T w2      = std::sin(t * theta) / sin_theta;
+  Vec4t out = w1 * q1 + w2 * q2;
+
+  return Quaternion{out[0], out[1], out[2], out[3]};
+}
+
+template <typename T>
+bool Quaternion<T>::isApprox(const Quaternion &other, T prec) const {
+  Vec4t coeffs1 = coeffs();
+  Vec4t coeffs2 = other.coeffs();
+  return coeffs1.isApprox(coeffs2, prec) or coeffs1.isApprox(-coeffs2, prec);
 }
 
 template <typename T>
