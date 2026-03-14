@@ -566,7 +566,7 @@ struct Indices : std::vector<std::size_t> {
       std::int64_t start = slice.first, end = slice.second;
       if (start < 0) start += static_cast<std::int64_t>(sequence_len);
       if (end <= 0) end += static_cast<std::int64_t>(sequence_len);
-      if (start < 0 or start > end or end > static_cast<std::int64_t>(sequence_len)) {
+      if (start < 0 or start >= end or end > static_cast<std::int64_t>(sequence_len)) {
         throw YamlError(fmt::format("Slice range [start={}, end={}) is invalid for sequence of length {}", slice.first,
                                     slice.second, sequence_len));
       }
