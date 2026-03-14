@@ -146,6 +146,12 @@ class Node {
   template <typename Key>
   Node operator[](const Key &key) const;
 
+  [[noreturn]] void throwError(const std::string &reason) const;
+  void throwUnless(bool condition, const std::string &reason) const { throwIf(not condition, reason); }
+  void throwIf(bool condition, const std::string &reason) const {
+    if (condition) throwError(reason);
+  }
+
  private:
   template <typename Key>
   Context makeChildContext(const Key &key) const {
@@ -153,9 +159,6 @@ class Node {
     child_context.keys.emplace_back(key);
     return child_context;
   }
-
-  void throwUnless(bool condition, const std::string &reason) const;
-  void throwIf(bool condition, const std::string &reason) const { throwUnless(not condition, reason); }
 
   YAML::Node node_;
   Context context_;
@@ -222,8 +225,7 @@ Node Node::operator[](const Key &key) const {
   return Node(node_[key], makeChildContext(key));
 }
 
-inline void Node::throwUnless(bool condition, const std::string &reason) const {
-  if (condition) return;
+inline void Node::throwError(const std::string &reason) const {
   std::string what = fmt::format("YamlError: {}.", reason);
   if (node_) what += fmt::format("\nNode: {}", toString(node_));
   if (not context_.filename.empty()) {
@@ -547,6 +549,64 @@ struct Decoder<std::optional<T>> {
   }
 };
 #endif
+
+struct Indices : std::vector<std::size_t> {
+  Indices() = default;
+  const std::vector<std::size_t> &canonicalize(std::size_t sequence_len) {
+    clear();
+    if (not raw_indices.empty()) {
+      for (auto &index : raw_indices) {
+        if (index < 0) index += static_cast<std::int64_t>(sequence_len);
+        if (index < 0 or index >= static_cast<std::int64_t>(sequence_len)) {
+          throw YamlError(fmt::format("Index {} is out of range for sequence of length {}", index, sequence_len));
+        }
+        push_back(static_cast<std::size_t>(index));
+      }
+    } else {
+      std::int64_t start = slice.first, end = slice.second;
+      if (start < 0) start += static_cast<std::int64_t>(sequence_len);
+      if (end <= 0) end += static_cast<std::int64_t>(sequence_len);
+      if (start < 0 or start > end or end > static_cast<std::int64_t>(sequence_len)) {
+        throw YamlError(fmt::format("Slice range [start={}, end={}) is invalid for sequence of length {}", slice.first,
+                                    slice.second, sequence_len));
+      }
+      for (std::int64_t i{start}; i < end; ++i) push_back(static_cast<std::size_t>(i));
+    }
+    return *this;
+  }
+
+  std::vector<std::int64_t> raw_indices;
+  std::pair<std::int64_t, std::int64_t> slice{0, 0};
+};
+
+template <>
+struct Decoder<Indices> {
+  static void decode(const YAML::Node &node, Indices &value) {
+    if (not((node.IsSequence() and node.size() > 0) or node.IsMap())) {
+      throw YamlError("Expected a non-empty sequence or a map for indices specification.");
+    }
+
+    if (node.IsSequence()) {
+      return Decoder<std::vector<std::int64_t>>::decode(node, value.raw_indices);
+    }
+    YAML::Node indices_node = node["indices"];
+    if (indices_node.IsDefined() and not indices_node.IsNull()) {
+      if (not(indices_node.IsSequence() and indices_node.size() > 0)) {
+        throw YamlError("Expected 'indices' to be a non-empty sequence.");
+      }
+      Decoder<std::vector<std::int64_t>>::decode(indices_node, value.raw_indices);
+    } else {
+      YAML::Node start_node = node["start"];
+      YAML::Node end_node   = node["end"];
+      if (start_node.IsDefined() and not start_node.IsNull()) {
+        Decoder<std::int64_t>::decode(start_node, value.slice.first);
+      }
+      if (end_node.IsDefined() and not end_node.IsNull()) {
+        Decoder<std::int64_t>::decode(end_node, value.slice.second);
+      }
+    }
+  }
+};
 }  // namespace yml
 }  // namespace llu
 
