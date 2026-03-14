@@ -87,6 +87,12 @@ constexpr T angleDiff(T a1, T a2) {
 
 inline ArrXf sigmoid(cArrXf val) { return 1 / (1 + (-val).exp()); }
 inline ArrXd sigmoid(cArrXd val) { return 1 / (1 + (-val).exp()); }
+
+template <typename T>
+bool isApprox(T a, T b, T tol = static_cast<T>(kEPS)) {
+  LLU_ASSERT_FLOATING_POINT(T);
+  return std::abs(a - b) <= tol;
+}
 }  // namespace llu
 
 #endif  // LLU_MATH_H_

@@ -3,8 +3,8 @@
 #include <gtest/gtest.h>
 #include <Eigen/Geometry>
 
-#include <llu/geometry.h>
 #include <llu/const.h>
+#include <llu/geometry.h>
 
 namespace {
 void expectEquivalentRotation(const Eigen::Quaterniond &expected, const llu::Quatd &actual) {
@@ -14,9 +14,10 @@ void expectEquivalentRotation(const Eigen::Quaterniond &expected, const llu::Qua
   EXPECT_TRUE(actual.matrix().isApprox(normalized_expected.toRotationMatrix(), 1e-6));
 }
 
-void expectSlerpMatchesEigen(const Eigen::Quaterniond &start, const Eigen::Quaterniond &end, double t, double prec = 1e-6) {
+void expectSlerpMatchesEigen(const Eigen::Quaterniond &start, const Eigen::Quaterniond &end, double t,
+                             double prec = 1e-6) {
   const auto expected = start.slerp(t, end);
-  const auto actual = llu::Quatd{start}.slerp(llu::Quatd{end}, t);
+  const auto actual   = llu::Quatd{start}.slerp(llu::Quatd{end}, t);
 
   EXPECT_TRUE(actual.isApprox(llu::Quatd{expected}, prec));
   EXPECT_TRUE(actual.matrix().isApprox(expected.toRotationMatrix(), prec));
@@ -24,8 +25,8 @@ void expectSlerpMatchesEigen(const Eigen::Quaterniond &start, const Eigen::Quate
 }  // namespace
 
 TEST(LLU_GEOMETRY_TEST, ConstructorsNormalizeCoefficientsAndPreserveRotation) {
-  const auto eigen_q = Eigen::Quaterniond(0.1, 0.2, 0.3, 0.4);
-  const auto llu_q = llu::Quatd(0.1, 0.2, 0.3, 0.4);
+  const auto eigen_q        = Eigen::Quaterniond(0.1, 0.2, 0.3, 0.4);
+  const auto llu_q          = llu::Quatd(0.1, 0.2, 0.3, 0.4);
   const auto llu_from_array = llu::Quatd(std::array<double, 4>{0.1, 0.2, 0.3, 0.4});
   const auto llu_from_eigen = llu::Quatd(eigen_q);
 
@@ -41,8 +42,8 @@ TEST(LLU_GEOMETRY_TEST, ConstructorsNormalizeCoefficientsAndPreserveRotation) {
 }
 
 TEST(LLU_GEOMETRY_TEST, InverseAndMultiplicationMatchEigenQuaternionSemantics) {
-  const auto q1 = Eigen::Quaterniond(0.1, 0.2, -0.3, 0.4).normalized();
-  const auto q2 = Eigen::Quaterniond(0.7, 0.6, 0.5, 0.4).normalized();
+  const auto q1     = Eigen::Quaterniond(0.1, 0.2, -0.3, 0.4).normalized();
+  const auto q2     = Eigen::Quaterniond(0.7, 0.6, 0.5, 0.4).normalized();
   const auto llu_q1 = llu::Quatd{q1};
   const auto llu_q2 = llu::Quatd{q2};
 
@@ -63,15 +64,26 @@ TEST(LLU_GEOMETRY_TEST, EulerAndMatrixConversionsRoundTrip) {
 
 TEST(LLU_GEOMETRY_TEST, QuaternionRotatesVectorsLikeEigen) {
   const auto eigen_q = Eigen::Quaterniond(-0.9, 0.3, 0.0, 0.1).normalized();
-  const auto llu_q = llu::Quatd{eigen_q};
+  const auto llu_q   = llu::Quatd{eigen_q};
   const llu::Vec3d vector{1., 2., 3.};
 
   EXPECT_TRUE((llu_q * vector).isApprox(eigen_q * vector, 1e-6));
 }
 
+TEST(LLU_GEOMETRY_TEST, RotationVectorMatchesAngleAxisForEquivalentQuaternions) {
+  const auto axis          = Eigen::Vector3d(1.0, -2.0, 3.0).normalized();
+  const auto angle         = 1.2;
+  const auto eigen_q       = Eigen::Quaterniond(Eigen::AngleAxisd(angle, axis));
+  const auto expected      = axis * angle;
+  const auto negated_llu_q = llu::Quatd{-eigen_q.w(), -eigen_q.x(), -eigen_q.y(), -eigen_q.z()};
+
+  EXPECT_TRUE(llu::Quatd{eigen_q}.rotationVector().isApprox(expected, 1e-6));
+  EXPECT_TRUE(negated_llu_q.rotationVector().isApprox(expected, 1e-6));
+}
+
 TEST(LLU_GEOMETRY_TEST, SlerpMatchesEigenAcrossInterpolationFactors) {
   const auto start = Eigen::Quaterniond(0.8, -0.1, 0.4, 0.4).normalized();
-  const auto end = Eigen::Quaterniond(-0.2, 0.9, -0.1, 0.3).normalized();
+  const auto end   = Eigen::Quaterniond(-0.2, 0.9, -0.1, 0.3).normalized();
 
   expectSlerpMatchesEigen(start, end, 0.0);
   expectSlerpMatchesEigen(start, end, 0.25);
@@ -82,7 +94,7 @@ TEST(LLU_GEOMETRY_TEST, SlerpMatchesEigenAcrossInterpolationFactors) {
 TEST(LLU_GEOMETRY_TEST, SlerpTreatsNegatedQuaternionAsSameRotation) {
   const auto start = Eigen::Quaterniond(0.1, -0.4, 0.2, 0.8).normalized();
   const Eigen::Quaterniond same_rotation{-start.w(), -start.x(), -start.y(), -start.z()};
-  const auto llu_start = llu::Quatd{start};
+  const auto llu_start         = llu::Quatd{start};
   const auto llu_same_rotation = llu::Quatd{same_rotation};
 
   EXPECT_TRUE(llu_start.slerp(llu_same_rotation, 0.0).isApprox(llu_start, 1e-6));
@@ -92,7 +104,7 @@ TEST(LLU_GEOMETRY_TEST, SlerpTreatsNegatedQuaternionAsSameRotation) {
 
 TEST(LLU_GEOMETRY_TEST, SlerpMatchesEigenForNearlyIdenticalQuaternions) {
   const auto start = Eigen::Quaterniond::Identity();
-  const auto end = Eigen::Quaterniond(Eigen::AngleAxisd(1e-6, Eigen::Vector3d::UnitZ()));
+  const auto end   = Eigen::Quaterniond(Eigen::AngleAxisd(1e-6, Eigen::Vector3d::UnitZ()));
 
   expectSlerpMatchesEigen(start, end, 0.5, 1e-9);
 }

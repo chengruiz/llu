@@ -6,9 +6,10 @@
 
 #include <Eigen/Dense>
 
+#include <llu/const.h>
 #include <llu/eigen.h>
-#include <llu/math.h>
 #include <llu/macro.h>
+#include <llu/math.h>
 
 namespace llu {
 template <typename T>
@@ -45,11 +46,12 @@ class Quaternion {
   [[nodiscard]] Quaternion inverse() const { return {w(), -x(), -y(), -z()}; }
   [[nodiscard]] Mat3t matrix() const;
   [[nodiscard]] Vec3t eulerAngles() const;
+  [[nodiscard]] Vec3t rotationVector() const;
 
   [[nodiscard]] Quaternion operator*(const Quaternion &other) const;
   [[nodiscard]] Vec3t operator*(const Vec3t &vec) const;
   [[nodiscard]] Quaternion slerp(const Quaternion &other, T t) const;
-  [[nodiscard]] bool isApprox(const Quaternion &other, T prec) const;
+  [[nodiscard]] bool isApprox(const Quaternion &other, T tol) const;
 
  private:
   std::array<T, 4> data_;
@@ -135,6 +137,17 @@ auto Quaternion<T>::matrix() const -> Mat3t {
 }
 
 template <typename T>
+auto Quaternion<T>::rotationVector() const -> Vec3t {
+  Vec4t canonical = coeffs();
+  if (canonical[0] < 0) canonical = -canonical;
+
+  Vec3t imag       = canonical.template tail<3>();
+  const T sin_half = imag.norm();
+  if (sin_half < kEPS) return static_cast<T>(2) * imag;
+  return imag * (static_cast<T>(2) * std::atan2(sin_half, canonical[0]) / sin_half);
+}
+
+template <typename T>
 auto Quaternion<T>::operator*=(T coef) -> Quaternion & {
   data_[0] *= coef;
   data_[1] *= coef;
@@ -196,10 +209,10 @@ auto Quaternion<T>::slerp(const Quaternion &other, T t) const -> Quaternion {
 }
 
 template <typename T>
-bool Quaternion<T>::isApprox(const Quaternion &other, T prec) const {
+bool Quaternion<T>::isApprox(const Quaternion &other, T tol) const {
   Vec4t coeffs1 = coeffs();
   Vec4t coeffs2 = other.coeffs();
-  return coeffs1.isApprox(coeffs2, prec) or coeffs1.isApprox(-coeffs2, prec);
+  return coeffs1.isApprox(coeffs2, tol) or coeffs1.isApprox(-coeffs2, tol);
 }
 
 template <typename T>
