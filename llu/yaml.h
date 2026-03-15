@@ -112,6 +112,7 @@ class Node {
   bool isFloat() const { return isType<double>(); }
   bool isDefined() const { return node_.IsDefined(); }
   bool isSequence() const { return isDefined() and node_.IsSequence(); }
+  bool isNonEmptySequence() const { return isSequence() and size() > 0; }
   bool isSequence(std::size_t size) const { return isSequence() and node_.size() == size; }
   bool isScalar() const { return isDefined() and node_.IsScalar(); }
   bool isMap() const { return isDefined() and node_.IsMap(); }
@@ -122,9 +123,7 @@ class Node {
   inline void assertFloat() const { throwUnless(isFloat(), "Expected a floating-point value"); }
   inline void assertDefined() const { throwUnless(isDefined(), "Undefined node"); }
   inline void assertSequence() const { throwUnless(isSequence(), "Expected a sequence"); }
-  inline void assertNonEmptySequence() const {
-    throwUnless(isSequence() and size() > 0, "Expected a non-empty sequence");
-  }
+  inline void assertNonEmptySequence() const { throwUnless(isNonEmptySequence(), "Expected a non-empty sequence"); }
   inline void assertSequence(std::size_t size) const {
     throwUnless(isSequence(size), fmt::format("Expected a sequence of size {}", size));
   }
