@@ -118,17 +118,20 @@ class Node {
   bool isNull() const { return isDefined() and node_.IsNull(); }
   bool hasValue() const { return isDefined() and not isNull(); }
 
-  inline void assertBool() const { throwIf(not isBool(), "Expected a boolean value"); }
-  inline void assertFloat() const { throwIf(not isFloat(), "Expected a floating-point value"); }
-  inline void assertDefined() const { throwIf(not isDefined(), "Undefined node"); }
-  inline void assertSequence() const { throwIf(not isSequence(), "Expected a sequence"); }
-  inline void assertSequence(std::size_t size) const {
-    throwIf(not isSequence(size), fmt::format("Expected a sequence of size {}", size));
+  inline void assertBool() const { throwUnless(isBool(), "Expected a boolean value"); }
+  inline void assertFloat() const { throwUnless(isFloat(), "Expected a floating-point value"); }
+  inline void assertDefined() const { throwUnless(isDefined(), "Undefined node"); }
+  inline void assertSequence() const { throwUnless(isSequence(), "Expected a sequence"); }
+  inline void assertNonEmptySequence() const {
+    throwUnless(isSequence() and size() > 0, "Expected a non-empty sequence");
   }
-  inline void assertScalar() const { throwIf(not isScalar(), "Expected a scalar"); }
-  inline void assertMap() const { throwIf(not isMap(), "Expected a map"); }
-  inline void assertIterable() const { throwIf(not(isSequence() or isMap()), "Expected a sequence or map"); }
-  inline void assertHasValue() const { throwIf(not hasValue(), "Expected a value"); }
+  inline void assertSequence(std::size_t size) const {
+    throwUnless(isSequence(size), fmt::format("Expected a sequence of size {}", size));
+  }
+  inline void assertScalar() const { throwUnless(isScalar(), "Expected a scalar"); }
+  inline void assertMap() const { throwUnless(isMap(), "Expected a map"); }
+  inline void assertIterable() const { throwUnless(isSequence() or isMap(), "Expected a sequence or map"); }
+  inline void assertHasValue() const { throwUnless(hasValue(), "Expected a value"); }
   template <typename Key, typename... Keys>
   inline void assertHasValue(const Key &key, const Keys &...keys) const {
     throwUnless(operator[](key).hasValue(), fmt::format("Expected key '{}' to have a value", key));
