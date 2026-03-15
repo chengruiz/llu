@@ -50,10 +50,14 @@ inline std::string toString(const YAML::Node &node) {
 #if FMT_VERSION < 90000
   std::stringstream ss;
   ss << node;
-  std::string node_str = ss.str();
+  return ss.str();
 #else
-  std::string node_str = fmt::format("{}", node);
+  return fmt::format("{}", node);
 #endif
+}
+
+inline std::string formatNode(const YAML::Node &node) {
+  std::string node_str = toString(node);
   if (node_str.find('\n') != std::string::npos) {
     for (std::size_t pos = 0; (pos = node_str.find('\n', pos)) != std::string::npos; pos += 3) {
       node_str.replace(pos, 1, "\n  ");
@@ -119,21 +123,21 @@ class Node {
   bool isNull() const { return isDefined() and node_.IsNull(); }
   bool hasValue() const { return isDefined() and not isNull(); }
 
-  inline void assertBool() const { throwUnless(isBool(), "Expected a boolean value"); }
-  inline void assertFloat() const { throwUnless(isFloat(), "Expected a floating-point value"); }
-  inline void assertDefined() const { throwUnless(isDefined(), "Undefined node"); }
-  inline void assertSequence() const { throwUnless(isSequence(), "Expected a sequence"); }
-  inline void assertNonEmptySequence() const { throwUnless(isNonEmptySequence(), "Expected a non-empty sequence"); }
+  inline void assertBool() const { require(isBool(), "Expected a boolean value"); }
+  inline void assertFloat() const { require(isFloat(), "Expected a floating-point value"); }
+  inline void assertDefined() const { require(isDefined(), "Undefined node"); }
+  inline void assertSequence() const { require(isSequence(), "Expected a sequence"); }
+  inline void assertNonEmptySequence() const { require(isNonEmptySequence(), "Expected a non-empty sequence"); }
   inline void assertSequence(std::size_t size) const {
-    throwUnless(isSequence(size), fmt::format("Expected a sequence of size {}", size));
+    require(isSequence(size), fmt::format("Expected a sequence of size {}", size));
   }
-  inline void assertScalar() const { throwUnless(isScalar(), "Expected a scalar"); }
-  inline void assertMap() const { throwUnless(isMap(), "Expected a map"); }
-  inline void assertIterable() const { throwUnless(isSequence() or isMap(), "Expected a sequence or map"); }
-  inline void assertHasValue() const { throwUnless(hasValue(), "Expected a value"); }
+  inline void assertScalar() const { require(isScalar(), "Expected a scalar"); }
+  inline void assertMap() const { require(isMap(), "Expected a map"); }
+  inline void assertIterable() const { require(isSequence() or isMap(), "Expected a sequence or map"); }
+  inline void assertHasValue() const { require(hasValue(), "Expected a value"); }
   template <typename Key, typename... Keys>
   inline void assertHasValue(const Key &key, const Keys &...keys) const {
-    throwUnless(operator[](key).hasValue(), fmt::format("Expected key '{}' to have a value", key));
+    require(operator[](key).hasValue(), fmt::format("Expected key '{}' to have a value", key));
     assertHasValue(keys...);
   }
   void assertMutuallyExclusive(std::initializer_list<std::string> keys) const;
@@ -149,7 +153,7 @@ class Node {
   Node operator[](const Key &key) const;
 
   [[noreturn]] void throwError(const std::string &reason) const;
-  void throwUnless(bool condition, const std::string &reason) const { throwIf(not condition, reason); }
+  void require(bool condition, const std::string &reason) const { throwIf(not condition, reason); }
   void throwIf(bool condition, const std::string &reason) const {
     if (condition) throwError(reason);
   }
@@ -215,7 +219,7 @@ void Node::to(T &value, bool allow_missing) const {
   try {
     Decoder<T>::decode(node_, value);
   } catch (const YamlError &error) {
-    throwIf(true, error.what());
+    throwError(error.what());
   }
 }
 
@@ -229,16 +233,16 @@ Node Node::operator[](const Key &key) const {
 
 inline void Node::throwError(const std::string &reason) const {
   std::string what = fmt::format("YamlError: {}.", reason);
-  if (node_) what += fmt::format("\nNode: {}", toString(node_));
+  if (node_) what += fmt::format("\nNode: {}", formatNode(node_));
   if (not context_.filename.empty()) {
     what += fmt::format("\nFile: {}.", context_.filename);
   } else if (context_.top_node) {
-    what += fmt::format("\nTop-level node: {}", toString(context_.top_node));
+    what += fmt::format("\nTop-level node: {}", formatNode(context_.top_node));
   }
   if (not context_.keys.empty()) {
     what += "\nFull path: ";
     for (const auto &key : context_.keys) {
-      what += fmt::format("[{}]", key);
+      what += fmt::format("[{}]", toString(key));
     }
   }
   throw YamlError(what);
