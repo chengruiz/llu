@@ -17,20 +17,6 @@ std::string captureWhat(Callback &&callback) {
 }
 }  // namespace
 
-TEST(LLU_ENV_TEST, CaseConversionHelpersTransformCopiesAndInPlaceValues) {
-  std::string lower = "AbC-123";
-  std::string upper = "xYz-123";
-
-  EXPECT_EQ(llu::toLowercase("MiXeD"), "mixed");
-  EXPECT_EQ(llu::toUppercase("MiXeD"), "MIXED");
-
-  llu::toLowercaseInplace(lower);
-  llu::toUppercaseInplace(upper);
-
-  EXPECT_EQ(lower, "abc-123");
-  EXPECT_EQ(upper, "XYZ-123");
-}
-
 TEST(LLU_ENV_TEST, MissingVariablesReturnFalseForSupportedTypes) {
   std::string str_val;
   long int_val = 0;

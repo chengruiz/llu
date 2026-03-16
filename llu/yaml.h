@@ -25,7 +25,9 @@
 #include <Eigen/Core>
 
 #include <llu/error.h>
+#include <llu/geometry.h>
 #include <llu/range.h>
+#include <llu/string.h>
 #include <llu/typename.h>
 
 #if FMT_VERSION >= 90000
@@ -610,6 +612,25 @@ struct Decoder<Indices> {
       if (end_node.IsDefined() and not end_node.IsNull()) {
         Decoder<std::int64_t>::decode(end_node, value.slice.second);
       }
+    }
+  }
+};
+
+template <>
+struct Decoder<Rotation6dOrder> {
+  static void decode(const YAML::Node &node, Rotation6dOrder &value) {
+    if (not node.IsDefined() or not node.IsScalar()) {
+      throw YamlError("Expected a scalar value.");
+    }
+
+    std::string order_str = node.as<std::string>();
+    toLowercaseInplace(order_str);
+    if (order_str == "row_major") {
+      value = Rotation6dOrder::kRowMajor;
+    } else if (order_str == "column_major") {
+      value = Rotation6dOrder::kColumnMajor;
+    } else {
+      throw YamlError("Expected 'row_major' or 'column_major'.");
     }
   }
 };

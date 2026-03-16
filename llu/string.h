@@ -1,11 +1,30 @@
 #ifndef LLU_STRING_H_
 #define LLU_STRING_H_
 
+#include <algorithm>
 #include <cctype>
 #include <string>
 
 namespace llu {
 inline std::string nonEmptyOr(const std::string &str1, const std::string &str2) { return str1.empty() ? str2 : str1; }
+
+inline void toLowercaseInplace(std::string &value) {
+  std::transform(value.begin(), value.end(), value.begin(), [](char ch) { return static_cast<char>(tolower(ch)); });
+}
+
+inline std::string toLowercase(std::string value) {
+  toLowercaseInplace(value);
+  return value;
+}
+
+inline void toUppercaseInplace(std::string &value) {
+  std::transform(value.begin(), value.end(), value.begin(), [](char ch) { return static_cast<char>(toupper(ch)); });
+}
+
+inline std::string toUppercase(std::string value) {
+  toUppercaseInplace(value);
+  return value;
+}
 
 inline std::string trim(const std::string &value) {
   std::size_t first = 0;

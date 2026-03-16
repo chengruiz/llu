@@ -1,7 +1,6 @@
 #ifndef LLU_ENV_H_
 #define LLU_ENV_H_
 
-#include <algorithm>
 #include <cctype>
 #include <cstdlib>
 #include <string>
@@ -9,25 +8,9 @@
 
 #include <fmt/core.h>
 
+#include <llu/string.h>
+
 namespace llu {
-inline void toLowercaseInplace(std::string &value) {
-  std::transform(value.begin(), value.end(), value.begin(), [](char ch) { return static_cast<char>(tolower(ch)); });
-}
-
-inline std::string toLowercase(std::string value) {
-  toLowercaseInplace(value);
-  return value;
-}
-
-inline void toUppercaseInplace(std::string &value) {
-  std::transform(value.begin(), value.end(), value.begin(), [](char ch) { return static_cast<char>(toupper(ch)); });
-}
-
-inline std::string toUppercase(std::string value) {
-  toUppercaseInplace(value);
-  return value;
-}
-
 inline bool getenv(const char *name, std::string &result) {
   const char *var = std::getenv(name);
   if (var == nullptr) return false;

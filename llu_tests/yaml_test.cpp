@@ -497,3 +497,13 @@ TEST(LLU_YAML_TEST, LoadFilePropagatesYamlSyntaxErrors) {
   EXPECT_THROW(llu::yml::loadFile(path), YAML::Exception);
   EXPECT_THROW(llu::yml::loadFile(path, true), YAML::Exception);
 }
+
+TEST(LLU_YAML_TEST, LoadRoth6dOrderAcceptsValidValues) {
+  auto column_major = inlineNode("order: column_major\n");
+  auto row_major = inlineNode("order: row_major\n");
+  auto other = inlineNode("order: other\n");
+
+  EXPECT_EQ(column_major["order"].as(llu::Rotation6dOrder::kColumnMajor), llu::Rotation6dOrder::kColumnMajor);
+  EXPECT_EQ(row_major["order"].as(llu::Rotation6dOrder::kRowMajor), llu::Rotation6dOrder::kRowMajor);
+  EXPECT_THROW(other["order"].as(llu::Rotation6dOrder::kRowMajor), llu::yml::YamlError);
+}
