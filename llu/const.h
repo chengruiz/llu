@@ -15,6 +15,8 @@ constexpr const char *kBlue      = "\033[1;34m";
 constexpr const char *kMagenta   = "\033[1;35m";
 constexpr const char *kCyan      = "\033[1;36m";
 
+constexpr const char *kErrorPrefix = "\033[1;31m[ERROR]\033[0m";
+
 constexpr double kEPS = 1e-8;
 }  // namespace llu
 
