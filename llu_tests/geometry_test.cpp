@@ -81,6 +81,29 @@ TEST(LLU_GEOMETRY_TEST, RotationVectorMatchesAngleAxisForEquivalentQuaternions) 
   EXPECT_TRUE(negated_llu_q.rotationVector().isApprox(expected, 1e-6));
 }
 
+TEST(LLU_GEOMETRY_TEST, Rotation6dDefaultsToColumnMajorEncoding) {
+  const auto identity = llu::Quatd{};
+  const llu::Vec6d expected_identity{1., 0., 0., 0., 1., 0.};
+
+  EXPECT_TRUE(identity.rotation6d().isApprox(expected_identity, 1e-6));
+  EXPECT_TRUE(identity.rotation6d(llu::Rotation6dOrder::kColumnMajor).isApprox(expected_identity, 1e-6));
+
+  const auto q = llu::Quatd::fromEulerAngles(0.3, -0.4, 1.1);
+  const auto m = q.matrix();
+  const llu::Vec6d expected{m(0, 0), m(1, 0), m(2, 0), m(0, 1), m(1, 1), m(2, 1)};
+
+  EXPECT_TRUE(q.rotation6d().isApprox(expected, 1e-6));
+  EXPECT_TRUE(q.rotation6d(llu::Rotation6dOrder::kColumnMajor).isApprox(expected, 1e-6));
+}
+
+TEST(LLU_GEOMETRY_TEST, Rotation6dSupportsRowMajorEncoding) {
+  const auto q = llu::Quatd::fromEulerAngles(0.3, -0.4, 1.1);
+  const auto m = q.matrix();
+  const llu::Vec6d expected{m(0, 0), m(0, 1), m(1, 0), m(1, 1), m(2, 0), m(2, 1)};
+
+  EXPECT_TRUE(q.rotation6d(llu::Rotation6dOrder::kRowMajor).isApprox(expected, 1e-6));
+}
+
 TEST(LLU_GEOMETRY_TEST, SlerpMatchesEigenAcrossInterpolationFactors) {
   const auto start = Eigen::Quaterniond(0.8, -0.1, 0.4, 0.4).normalized();
   const auto end   = Eigen::Quaterniond(-0.2, 0.9, -0.1, 0.3).normalized();

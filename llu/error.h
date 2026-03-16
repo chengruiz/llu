@@ -45,4 +45,6 @@ void assertEqHelper(T1 value, T2 expected, const char *value_str, const char *ex
 #define LLU_ASSERT(condition, ...) ::llu::impl::assertHelper(condition, #condition, LLU_FILELINE(), __VA_ARGS__)
 #define LLU_ASSERT_EQ(value, expected, ...) \
   ::llu::impl::assertEqHelper(value, expected, #value, #expected, LLU_FILELINE(), __VA_ARGS__)
+#define LLU_UNREACHABLE() LLU_THROW("Unreachable code reached.")
+
 #endif  //  LLU_ERROR_H_

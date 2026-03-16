@@ -3,19 +3,24 @@
 
 #include <array>
 #include <cmath>
+#include <cstdint>
 
 #include <Eigen/Dense>
 
 #include <llu/const.h>
 #include <llu/eigen.h>
+#include <llu/error.h>
 #include <llu/macro.h>
 #include <llu/math.h>
 
 namespace llu {
+enum class Rotation6dOrder : std::uint8_t { kRowMajor, kColumnMajor };
+
 template <typename T>
 class Quaternion {
   LLU_EIGEN_ALIAS(Vec3t, Eigen::Matrix<T, 3, 1>);
   LLU_EIGEN_ALIAS(Vec4t, Eigen::Matrix<T, 4, 1>);
+  LLU_EIGEN_ALIAS(Vec6t, Eigen::Matrix<T, 6, 1>);
   LLU_EIGEN_ALIAS(Mat3t, Eigen::Matrix<T, 3, 3>);
   static constexpr T PI = static_cast<T>(M_PI);
 
@@ -47,6 +52,7 @@ class Quaternion {
   [[nodiscard]] Mat3t matrix() const;
   [[nodiscard]] Vec3t eulerAngles() const;
   [[nodiscard]] Vec3t rotationVector() const;
+  [[nodiscard]] Vec6t rotation6d(Rotation6dOrder order = Rotation6dOrder::kColumnMajor) const;
 
   [[nodiscard]] Quaternion operator*(const Quaternion &other) const;
   [[nodiscard]] Vec3t operator*(const Vec3t &vec) const;
@@ -145,6 +151,23 @@ auto Quaternion<T>::rotationVector() const -> Vec3t {
   const T sin_half = imag.norm();
   if (sin_half < kEPS) return static_cast<T>(2) * imag;
   return imag * (static_cast<T>(2) * std::atan2(sin_half, canonical[0]) / sin_half);
+}
+
+template <typename T>
+auto Quaternion<T>::rotation6d(Rotation6dOrder order) const -> Vec6t {
+  Vec6t out;
+  const auto m = matrix();
+  switch (order) {
+    case Rotation6dOrder::kRowMajor:
+      out << m(0, 0), m(0, 1), m(1, 0), m(1, 1), m(2, 0), m(2, 1);
+      break;
+    case Rotation6dOrder::kColumnMajor:
+      out << m(0, 0), m(1, 0), m(2, 0), m(0, 1), m(1, 1), m(2, 1);
+      break;
+    default:
+      LLU_UNREACHABLE();
+  }
+  return out;
 }
 
 template <typename T>
