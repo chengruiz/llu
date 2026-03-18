@@ -25,6 +25,10 @@ typename Unit::rep getElapsedTime(const TimePoint &start_time) {
   return std::chrono::duration_cast<Unit>(SteadyClock::now() - start_time).count();
 }
 
+inline double getElapsedSeconds(const TimePoint &start_time) {
+  return std::chrono::duration_cast<std::chrono::duration<double> >(SteadyClock::now() - start_time).count();
+}
+
 class Rate {
  public:
   explicit Rate(std::size_t freq) {
