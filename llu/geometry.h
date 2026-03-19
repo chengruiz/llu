@@ -264,6 +264,19 @@ inline Vec3f mat2rpy(const Mat3f &mat) {
 inline Vec3d mat2rpy(const Mat3d &mat) {
   return {std::atan2(mat(2, 1), mat(2, 2)), std::asin(-mat(2, 0)), std::atan2(mat(1, 0), mat(0, 0))};
 }
+
+template <typename T>
+Eigen::Matrix<T, 7, 1> interpolateSE3(const Eigen::Matrix<T, 7, 1> &pose0, const Eigen::Matrix<T, 7, 1> &pose1,
+                                      T blend) {
+  Eigen::Matrix<T, 3, 1> pos0 = pose0.template head<3>();
+  Eigen::Matrix<T, 3, 1> pos1 = pose1.template head<3>();
+  Quaternion<T> rot0(pose0.template tail<4>());
+  Quaternion<T> rot1(pose1.template tail<4>());
+  Eigen::Matrix<T, 7, 1> blended_pose;
+  blended_pose.template head<3>() = (static_cast<T>(1) - blend) * pos0 + blend * pos1;
+  blended_pose.template tail<4>() = rot0.slerp(rot1, static_cast<T>(blend)).coeffs();
+  return blended_pose;
+}
 }  // namespace llu
 
 #endif  // LLU_GEOMETRY_H_
