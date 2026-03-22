@@ -62,6 +62,20 @@ TEST(LLU_GEOMETRY_TEST, EulerAndMatrixConversionsRoundTrip) {
   EXPECT_TRUE(llu::Quatd::fromEulerAngles(q.eulerAngles()).isApprox(q, 1e-6));
 }
 
+TEST(LLU_GEOMETRY_TEST, AxisConstructorsMatchEigenAndSetIdentityResetsRotation) {
+  expectEquivalentRotation(Eigen::Quaterniond(Eigen::AngleAxisd(0.3, Eigen::Vector3d::UnitX())),
+                           llu::Quatd::fromRoll(0.3));
+  expectEquivalentRotation(Eigen::Quaterniond(Eigen::AngleAxisd(-0.4, Eigen::Vector3d::UnitY())),
+                           llu::Quatd::fromPitch(-0.4));
+  expectEquivalentRotation(Eigen::Quaterniond(Eigen::AngleAxisd(1.1, Eigen::Vector3d::UnitZ())),
+                           llu::Quatd::fromYaw(1.1));
+
+  auto q = llu::Quatd::fromEulerAngles(0.2, -0.3, 0.4);
+  q.setIdentity();
+
+  EXPECT_TRUE(q.isApprox(llu::Quatd{}, 1e-6));
+}
+
 TEST(LLU_GEOMETRY_TEST, QuaternionRotatesVectorsLikeEigen) {
   const auto eigen_q = Eigen::Quaterniond(-0.9, 0.3, 0.0, 0.1).normalized();
   const auto llu_q   = llu::Quatd{eigen_q};
@@ -83,14 +97,16 @@ TEST(LLU_GEOMETRY_TEST, RotationVectorMatchesAngleAxisForEquivalentQuaternions) 
 
 TEST(LLU_GEOMETRY_TEST, Rotation6dDefaultsToColumnMajorEncoding) {
   const auto identity = llu::Quatd{};
-  const llu::Vec6d expected_identity{1., 0., 0., 0., 1., 0.};
+  llu::Vec6d expected_identity;
+  expected_identity << 1., 0., 0., 0., 1., 0.;
 
   EXPECT_TRUE(identity.rotation6d().isApprox(expected_identity, 1e-6));
   EXPECT_TRUE(identity.rotation6d(llu::Rotation6dOrder::kColumnMajor).isApprox(expected_identity, 1e-6));
 
   const auto q = llu::Quatd::fromEulerAngles(0.3, -0.4, 1.1);
   const auto m = q.matrix();
-  const llu::Vec6d expected{m(0, 0), m(1, 0), m(2, 0), m(0, 1), m(1, 1), m(2, 1)};
+  llu::Vec6d expected;
+  expected << m(0, 0), m(1, 0), m(2, 0), m(0, 1), m(1, 1), m(2, 1);
 
   EXPECT_TRUE(q.rotation6d().isApprox(expected, 1e-6));
   EXPECT_TRUE(q.rotation6d(llu::Rotation6dOrder::kColumnMajor).isApprox(expected, 1e-6));
@@ -99,7 +115,8 @@ TEST(LLU_GEOMETRY_TEST, Rotation6dDefaultsToColumnMajorEncoding) {
 TEST(LLU_GEOMETRY_TEST, Rotation6dSupportsRowMajorEncoding) {
   const auto q = llu::Quatd::fromEulerAngles(0.3, -0.4, 1.1);
   const auto m = q.matrix();
-  const llu::Vec6d expected{m(0, 0), m(0, 1), m(1, 0), m(1, 1), m(2, 0), m(2, 1)};
+  llu::Vec6d expected;
+  expected << m(0, 0), m(0, 1), m(1, 0), m(1, 1), m(2, 0), m(2, 1);
 
   EXPECT_TRUE(q.rotation6d(llu::Rotation6dOrder::kRowMajor).isApprox(expected, 1e-6));
 }
@@ -138,4 +155,20 @@ TEST(LLU_GEOMETRY_TEST, RpyHelpersConvertBetweenAnglesAndMatrices) {
 
   EXPECT_TRUE(rotation.matrix().isApprox(llu::Quatd::fromEulerAngles(rpy).matrix(), 1e-6));
   EXPECT_TRUE(llu::mat2rpy(rotation.matrix()).isApprox(rpy, 1e-6));
+}
+
+TEST(LLU_GEOMETRY_TEST, InterpolateSE3BlendsTranslationAndRotation) {
+  Eigen::Matrix<double, 7, 1> pose0;
+  pose0 << 0., 1., -2., 1., 0., 0., 0.;
+
+  Eigen::Matrix<double, 7, 1> pose1;
+  pose1.head<3>() = llu::Vec3d{4., -3., 2.};
+  const auto end_rotation = Eigen::Quaterniond(Eigen::AngleAxisd(M_PI / 2, Eigen::Vector3d::UnitZ()));
+  pose1.tail<4>() << end_rotation.w(), end_rotation.x(), end_rotation.y(), end_rotation.z();
+
+  const auto blended           = llu::interpolateSE3(pose0, pose1, 0.25);
+  const auto expected_rotation = Eigen::Quaterniond::Identity().slerp(0.25, end_rotation);
+
+  EXPECT_TRUE(blended.head<3>().isApprox(llu::Vec3d{1., 0., -1.}, 1e-6));
+  EXPECT_TRUE(llu::Quatd{blended.tail<4>()}.isApprox(llu::Quatd{expected_rotation}, 1e-6));
 }

@@ -1,9 +1,12 @@
 #ifndef LLU_EIGEN_H_
 #define LLU_EIGEN_H_
 
+#include <cmath>
 #include <vector>
 
 #include <Eigen/Core>
+
+#include <llu/error.h>
 
 #define LLU_EIGEN_ALIAS(alias, ...)          \
   using alias     = __VA_ARGS__;             \
@@ -69,7 +72,8 @@ void populateArray(Eigen::Array<T, -1, 1> &vec, Eigen::Index size) {
   if (vec.size() == 0) {
     vec.setZero(size);
   } else if (vec.size() == 1) {
-    vec.setConstant(size, vec[0]);
+    const T scalar = vec[0];
+    vec.setConstant(size, scalar);
   } else {
     LLU_ASSERT(vec.size() == size, "Size mismatch when populating array.");
   }

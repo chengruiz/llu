@@ -87,3 +87,9 @@ TEST(LLU_MATH_TEST, SigmoidMatchesExpectedAnalyticalValues) {
 
   EXPECT_TRUE(llu::sigmoid(values).isApprox(expected, 1e-12));
 }
+
+TEST(LLU_MATH_TEST, IsApproxUsesDefaultAndCustomTolerance) {
+  EXPECT_TRUE(llu::isApprox(1.0, 1.0 + llu::kEPS / 2.0));
+  EXPECT_FALSE(llu::isApprox(1.0, 1.0 + llu::kEPS * 10.0));
+  EXPECT_TRUE(llu::isApprox(1.0, 1.001, 0.01));
+}

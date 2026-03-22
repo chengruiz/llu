@@ -117,6 +117,7 @@ class IntervalStats {
 
 template <typename Unit>
 void IntervalStats<Unit>::clear() {
+  first_ = true;
   count_ = 0;
   mean_  = 0.;
   var_   = 0.;

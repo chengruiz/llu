@@ -12,6 +12,13 @@ TEST(LLU_CHRONO_TEST, GetElapsedTimeCastsToRequestedUnit) {
   EXPECT_GE(llu::getElapsedTime<llu::USec>(start), 7000);
 }
 
+TEST(LLU_CHRONO_TEST, GetElapsedSecondsReportsFractionalDurations) {
+  const auto start = llu::SteadyClock::now() -
+                     std::chrono::duration_cast<llu::Duration>(std::chrono::duration<double>(0.01));
+
+  EXPECT_GE(llu::getElapsedSeconds(start), 0.009);
+}
+
 TEST(LLU_CHRONO_TEST, RateRejectsZeroFrequency) {
   EXPECT_THROW(llu::Rate(0), std::invalid_argument);
 }
@@ -74,4 +81,23 @@ TEST(LLU_CHRONO_TEST, IntervalStatsTracksIntervalsAndReportsSummary) {
   stats.clear();
 
   EXPECT_EQ(stats.count(), 0u);
+}
+
+TEST(LLU_CHRONO_TEST, IntervalStatsClearResetsTheSamplingBaseline) {
+  llu::IntervalStats<llu::USec> stats;
+
+  stats.tick();
+  std::this_thread::sleep_for(llu::MSec(1));
+  stats.tick();
+  ASSERT_EQ(stats.count(), 1u);
+
+  stats.clear();
+  EXPECT_EQ(stats.count(), 0u);
+
+  stats.tick();
+  EXPECT_EQ(stats.count(), 0u);
+
+  std::this_thread::sleep_for(llu::MSec(1));
+  stats.tick();
+  EXPECT_EQ(stats.count(), 1u);
 }

@@ -54,3 +54,20 @@ TEST(LLU_EIGEN_TEST, MatricesUseEigenStorageOrderForIndices) {
 
   EXPECT_EQ(llu::getNonFiniteIndices(mat_mixed), (std::vector<Eigen::Index>{4, 6}));
 }
+
+TEST(LLU_EIGEN_TEST, PopulateArrayInitializesBroadcastsAndValidatesSize) {
+  llu::ArrXf empty;
+  llu::populateArray(empty, 3);
+  EXPECT_EQ(empty.size(), 3);
+  EXPECT_TRUE(empty.isZero());
+
+  llu::ArrXf scalar(1);
+  scalar << 2.5f;
+  llu::populateArray(scalar, 4);
+  EXPECT_EQ(scalar.size(), 4);
+  EXPECT_TRUE(scalar.isApprox(llu::ArrXf::Constant(4, 2.5f)));
+
+  llu::ArrXf wrong_size(2);
+  wrong_size << 1.0f, 2.0f;
+  EXPECT_THROW(llu::populateArray(wrong_size, 3), std::runtime_error);
+}

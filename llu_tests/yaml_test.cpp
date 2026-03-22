@@ -507,3 +507,28 @@ TEST(LLU_YAML_TEST, LoadRoth6dOrderAcceptsValidValues) {
   EXPECT_EQ(row_major["order"].as(llu::Rotation6dOrder::kRowMajor), llu::Rotation6dOrder::kRowMajor);
   EXPECT_THROW(other["order"].as(llu::Rotation6dOrder::kRowMajor), llu::yml::YamlError);
 }
+
+TEST(LLU_YAML_TEST, IndicesDecoderCanonicalizesExplicitIndicesAndSlices) {
+  auto root = inlineNode("explicit: [0, -1, 2]\nfrom_map: {indices: [1, -2]}\nslice: {start: 1, end: -1}\n");
+
+  auto explicit_indices = root["explicit"].as<llu::yml::Indices>();
+  auto map_indices = root["from_map"].as<llu::yml::Indices>();
+  auto slice_indices = root["slice"].as<llu::yml::Indices>();
+
+  EXPECT_EQ(explicit_indices.canonicalize(4), (std::vector<std::size_t>{0u, 3u, 2u}));
+  EXPECT_EQ(map_indices.canonicalize(4), (std::vector<std::size_t>{1u, 2u}));
+  EXPECT_EQ(slice_indices.canonicalize(5), (std::vector<std::size_t>{1u, 2u, 3u}));
+}
+
+TEST(LLU_YAML_TEST, IndicesDecoderRejectsInvalidSpecifications) {
+  auto root = inlineNode("empty: []\nempty_map_indices: {indices: []}\nout_of_range: [5]\nbad_slice: {start: 3, end: 2}\n");
+
+  EXPECT_THROW(root["empty"].as<llu::yml::Indices>(), llu::yml::YamlError);
+  EXPECT_THROW(root["empty_map_indices"].as<llu::yml::Indices>(), llu::yml::YamlError);
+
+  auto out_of_range = root["out_of_range"].as<llu::yml::Indices>();
+  EXPECT_THROW(out_of_range.canonicalize(4), llu::yml::YamlError);
+
+  auto bad_slice = root["bad_slice"].as<llu::yml::Indices>();
+  EXPECT_THROW(bad_slice.canonicalize(4), llu::yml::YamlError);
+}
