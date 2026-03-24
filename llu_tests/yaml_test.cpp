@@ -77,6 +77,24 @@ TEST(LLU_YAML_TEST, NodeAccessPreservesContextForNestedLookups) {
   EXPECT_EQ(value.as<int>(), 10);
 }
 
+TEST(LLU_YAML_TEST, NodeCopiesPreserveWrappedNodeAndContext) {
+  const auto root  = inlineNode("outer:\n  inner: 7\n");
+  const auto child = root["outer"]["inner"];
+
+  const auto copy_constructed = child;
+  llu::yml::Node copy_assigned;
+  copy_assigned = child;
+
+  EXPECT_TRUE(copy_constructed.isScalar());
+  EXPECT_TRUE(copy_assigned.isScalar());
+  EXPECT_EQ(copy_constructed.as<int>(), 7);
+  EXPECT_EQ(copy_assigned.as<int>(), 7);
+  EXPECT_EQ(copy_constructed.context().keys.size(), 2u);
+  EXPECT_EQ(copy_assigned.context().keys.size(), 2u);
+  EXPECT_TRUE(copy_constructed.context().top_node.IsMap());
+  EXPECT_TRUE(copy_assigned.context().top_node.IsMap());
+}
+
 TEST(LLU_YAML_TEST, SequenceIteratorsWrapYamlNodesAsLluNodes) {
   const auto root = inlineNode("items:\n  - 3\n  - 5\n  - 8\n");
 

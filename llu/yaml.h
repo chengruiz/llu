@@ -80,6 +80,8 @@ struct Decoder {
   }
 };
 
+inline YAML::Node undefinedNode() { return YAML::Node(YAML::NodeType::Undefined); }
+
 class Node {
  public:
   class iterator_value;
@@ -92,13 +94,16 @@ class Node {
     std::vector<YAML::Node> keys;
   };
 
-  Node() : node_(YAML::Node(YAML::NodeType::Undefined)) {}
-  explicit Node(YAML::Node node) : node_(std::move(node)) {
+  Node() : node_(undefinedNode()) {}
+  Node(const Node &) = default;
+  explicit Node(YAML::Node node) : node_(node.IsDefined() ? std::move(node) : undefinedNode()) {
     if (node_) context_.top_node = node_;
   }
-  Node(YAML::Node node, Context context) : node_(std::move(node)), context_(std::move(context)) {
+  Node(YAML::Node node, Context context)
+      : node_(node.IsDefined() ? std::move(node) : undefinedNode()), context_(std::move(context)) {
     if (not context_.top_node and node_) context_.top_node = node_;
   }
+  Node &operator=(const Node &) = default;
 
   operator YAML::Node() const { return node_; }
   YAML::Node &native() { return node_; }
