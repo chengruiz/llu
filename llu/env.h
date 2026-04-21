@@ -49,6 +49,20 @@ inline bool getenv(const char *name, bool &result) {
   return true;
 }
 
+inline bool getenv(const char *name, int &result) {
+  const char *var = std::getenv(name);
+  if (var == nullptr) return false;
+  char *end{nullptr};
+  long value = std::strtol(var, &end, 10);
+  if (*end != '\0') {
+    throw std::invalid_argument(
+        fmt::format("Environment Variable '{}' ({}) cannot be converted to a integer.", name, var));
+  }
+
+  result = value;
+  return true;
+}
+
 inline bool getenv(const char *name, long &result) {
   const char *var = std::getenv(name);
   if (var == nullptr) return false;
