@@ -48,6 +48,7 @@ class Quaternion {
   [[nodiscard]] constexpr T y() const { return data_[2]; }
   [[nodiscard]] constexpr T z() const { return data_[3]; }
   [[nodiscard]] Vec4t coeffs() const { return {w(), x(), y(), z()}; }
+  [[nodiscard]] Quaternion canonicalize() const;
   [[nodiscard]] Quaternion inverse() const { return {w(), -x(), -y(), -z()}; }
   [[nodiscard]] Mat3t matrix() const;
   [[nodiscard]] Vec3t eulerAngles() const;
@@ -144,8 +145,7 @@ auto Quaternion<T>::matrix() const -> Mat3t {
 
 template <typename T>
 auto Quaternion<T>::rotationVector() const -> Vec3t {
-  Vec4t canonical = coeffs();
-  if (canonical[0] < 0) canonical = -canonical;
+  Vec4t canonical = canonicalize().coeffs();
 
   Vec3t imag       = canonical.template tail<3>();
   const T sin_half = imag.norm();
@@ -154,20 +154,8 @@ auto Quaternion<T>::rotationVector() const -> Vec3t {
 }
 
 template <typename T>
-auto Quaternion<T>::rotation6d(Rotation6dOrder order) const -> Vec6t {
-  Vec6t out;
-  const auto m = matrix();
-  switch (order) {
-    case Rotation6dOrder::kRowMajor:
-      out << m(0, 0), m(0, 1), m(1, 0), m(1, 1), m(2, 0), m(2, 1);
-      break;
-    case Rotation6dOrder::kColumnMajor:
-      out << m(0, 0), m(1, 0), m(2, 0), m(0, 1), m(1, 1), m(2, 1);
-      break;
-    default:
-      LLU_UNREACHABLE();
-  }
-  return out;
+auto Quaternion<T>::canonicalize() const -> Quaternion {
+  return w() < 0 ? *this * static_cast<T>(-1) : *this;
 }
 
 template <typename T>
@@ -258,11 +246,82 @@ inline auto rpy2rot(const Vec3f &rpy) { return rpy2rot(rpy.x(), rpy.y(), rpy.z()
 inline auto rpy2rot(const Vec3d &rpy) { return rpy2rot(rpy.x(), rpy.y(), rpy.z()); }
 
 inline Vec3f mat2rpy(const Mat3f &mat) {
-  return {std::atan2(mat(2, 1), mat(2, 2)), std::asin(-mat(2, 0)), std::atan2(mat(1, 0), mat(0, 0))};
+  return {std::atan2(mat(2, 1), mat(2, 2)), std::asin(clamp(-mat(2, 0), -1.0F, 1.0F)),
+          std::atan2(mat(1, 0), mat(0, 0))};
 }
 
 inline Vec3d mat2rpy(const Mat3d &mat) {
-  return {std::atan2(mat(2, 1), mat(2, 2)), std::asin(-mat(2, 0)), std::atan2(mat(1, 0), mat(0, 0))};
+  return {std::atan2(mat(2, 1), mat(2, 2)), std::asin(clamp(-mat(2, 0), -1.0, 1.0)),
+          std::atan2(mat(1, 0), mat(0, 0))};
+}
+
+template <typename Derived>
+auto mat2rot6d(const Eigen::MatrixBase<Derived> &matrix,
+               Rotation6dOrder order = Rotation6dOrder::kColumnMajor)
+    -> Eigen::Matrix<typename Derived::Scalar, 6, 1> {
+  using T = typename Derived::Scalar;
+  LLU_ASSERT(matrix.rows() == 3 and matrix.cols() == 3, "Rotation matrix must have size 3x3.");
+
+  Eigen::Matrix<T, 6, 1> out;
+  const auto m = matrix.eval();
+  switch (order) {
+    case Rotation6dOrder::kRowMajor:
+      out << m(0, 0), m(0, 1), m(1, 0), m(1, 1), m(2, 0), m(2, 1);
+      break;
+    case Rotation6dOrder::kColumnMajor:
+      out << m(0, 0), m(1, 0), m(2, 0), m(0, 1), m(1, 1), m(2, 1);
+      break;
+    default:
+      LLU_UNREACHABLE();
+  }
+  return out;
+}
+
+template <typename Derived>
+auto rot6d2mat(const Eigen::DenseBase<Derived> &rot6,
+               Rotation6dOrder order = Rotation6dOrder::kColumnMajor)
+    -> Eigen::Matrix<typename Derived::Scalar, 3, 3> {
+  using T     = typename Derived::Scalar;
+  using Vec3t = Eigen::Matrix<T, 3, 1>;
+  using Mat3t = Eigen::Matrix<T, 3, 3>;
+  LLU_ASSERT(rot6.size() == 6, "rot6 must have size 6, got {}.", rot6.size());
+
+  Vec3t a1;
+  Vec3t a2;
+  switch (order) {
+    case Rotation6dOrder::kRowMajor:
+      a1 = Vec3t(rot6.derived().coeff(0), rot6.derived().coeff(2), rot6.derived().coeff(4));
+      a2 = Vec3t(rot6.derived().coeff(1), rot6.derived().coeff(3), rot6.derived().coeff(5));
+      break;
+    case Rotation6dOrder::kColumnMajor:
+      a1 = Vec3t(rot6.derived().coeff(0), rot6.derived().coeff(1), rot6.derived().coeff(2));
+      a2 = Vec3t(rot6.derived().coeff(3), rot6.derived().coeff(4), rot6.derived().coeff(5));
+      break;
+    default:
+      LLU_UNREACHABLE();
+  }
+
+  constexpr T kTiny = static_cast<T>(1.0e-8);
+  if (a1.norm() < kTiny) a1 = Vec3t::UnitX();
+  Vec3t b1 = a1.normalized();
+  a2 -= b1 * b1.dot(a2);
+  if (a2.norm() < kTiny) {
+    a2 = std::abs(b1.dot(Vec3t::UnitY())) < static_cast<T>(0.9) ? Vec3t::UnitY() : Vec3t::UnitZ();
+    a2 -= b1 * b1.dot(a2);
+  }
+  Vec3t b2 = a2.normalized();
+  Vec3t b3 = b1.cross(b2).normalized();
+
+  Mat3t matrix;
+  matrix.col(0) = b1;
+  matrix.col(1) = b2;
+  matrix.col(2) = b3;
+  return matrix;
+}
+
+template <typename T>
+auto Quaternion<T>::rotation6d(Rotation6dOrder order) const -> Vec6t {
+  return mat2rot6d(matrix(), order);
 }
 
 template <typename T>
