@@ -548,6 +548,17 @@ struct Decoder<Eigen::Array<T, -1, 1>> {
   }
 };
 
+template <>
+struct Decoder<Eigen::Array<bool, -1, 1>> {
+  static void decode(const YAML::Node &node, Eigen::Array<bool, -1, 1> &value) {
+    std::vector<bool> result;
+    if (value.size() != 0) result.resize(value.size());
+    Decoder<std::vector<bool>>::decode(node, result);
+    value.resize(result.size());
+    for (Eigen::Index i{}; i < value.size(); ++i) value[i] = result[i];
+  }
+};
+
 #if __cplusplus >= 201703L
 template <typename T>
 struct Decoder<std::optional<T>> {

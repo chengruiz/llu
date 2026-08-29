@@ -326,6 +326,28 @@ TEST(LLU_YAML_TEST, EigenDecodersSupportFixedAndDynamicShapes) {
   EXPECT_THROW(root["triplet"].to(wrong_size), llu::yml::YamlError);
 }
 
+TEST(LLU_YAML_TEST, EigenDecoderSupportsDynamicBoolArrays) {
+  auto root = inlineNode("flags: [true, false, on]\nflag: false\nintegers: [0, 1]\n");
+
+  Eigen::Array<bool, Eigen::Dynamic, 1> flags;
+  root["flags"].to(flags);
+
+  ASSERT_EQ(flags.size(), 3);
+  EXPECT_TRUE(flags[0]);
+  EXPECT_FALSE(flags[1]);
+  EXPECT_TRUE(flags[2]);
+
+  flags.resize(3);
+  root["flag"].to(flags);
+  EXPECT_TRUE((flags == false).all());
+
+  Eigen::Array<bool, Eigen::Dynamic, 1> wrong_size(2);
+  EXPECT_THROW(root["flags"].to(wrong_size), llu::yml::YamlError);
+
+  Eigen::Array<bool, Eigen::Dynamic, 1> integers;
+  EXPECT_THROW(root["integers"].to(integers), llu::yml::YamlError);
+}
+
 #if __cplusplus >= 201703L
 TEST(LLU_YAML_TEST, OptionalDecoderHandlesValuesAndNulls) {
   auto root = inlineNode("present: 11\nmissing: null\n");
